@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "lib": ["es5", "es6"],
+      "target": "es5",
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "types": ["node"],
+      "outDir": "./build",
+      "downlevelIteration": true,
+      "sourceMap": true,
+      "strict": true, 
+      "noImplicitAny": true,  
+      "skipLibCheck": true,
+      "esModuleInterop": true,
+      "allowSyntheticDefaultImports": true
+    },
+    "include": ["./src/**/*.ts", "./src/**/*.json"],
+    "exclude": ["node_modules", "./build"], 
+    "baseUrl": "."
+  }
+  

@@ -1,0 +1,45 @@
+{
+  "name": "bitmoropackage",
+  "version": "1.0.0",
+  "description": "A package for message handler in Bitmoro.com",
+  "main": "build/index.js",
+  "types": "build/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "nodemon --watch src --ext ts --exec 'ts-node -r tsconfig-paths/register src/index.ts'",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test",
+    "preversion": "npm run lint",
+    "version": "npm run format && git add -A",
+    "postversion": "git push && git push --tags",
+    "lint": "eslint 'src/**/*.ts'",
+    "format": "prettier --write 'src/**/*.ts'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/li4nee/bitmoroService.git"
+  },
+  "author": "Backend Bitmoro",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/li4nee/bitmoroService/issues"
+  },
+  "homepage": "https://github.com/li4nee/bitmoroService#readme",
+  "devDependencies": {
+    "@types/node": "^22.5.1",
+    "nodemon": "^2.0.22",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.1.0",
+    "typescript": "^5.5.4"
+  },
+  "files": [
+    "build/**/*"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "crypto": "^1.0.1",
+    "https": "^1.0.0"
+  }
+}
