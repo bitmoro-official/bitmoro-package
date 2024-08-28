@@ -7,6 +7,12 @@ export interface MessageApiDto{
   senderId?:string,
 }
 
+export interface MessageFromUserDto{
+    number?:string,
+  message?:string,
+  senderId?:string,
+}
+
 class MessageHandler {
     token: string
 
@@ -14,9 +20,16 @@ class MessageHandler {
         this.token=token
     }
 
-    sendMessage(options: MessageApiDto,): Promise<boolean> {
+    sendMessage(options: MessageFromUserDto,): Promise<boolean> {
         return new Promise<boolean>((resolve, reject) => {
-            const data = JSON.stringify(options);
+            
+            const messageOptions: MessageApiDto = {
+                number: options.number ? [options.number] : undefined,
+                message: options.message,
+                senderId: options.senderId,
+              };
+              
+            const data = JSON.stringify(messageOptions);
             const option = {
                 method: 'POST',
                 headers: {
@@ -56,8 +69,8 @@ export class MessageSender{
         this.sms=new MessageHandler(token)
     }
 
-    async sendSms(message:string,number:string[],senderId?:string){
-        let sendBody:MessageApiDto={
+    async sendSms(message:string,number:string,senderId?:string){
+        let sendBody:MessageFromUserDto={
             message,
             number,
             senderId
@@ -92,8 +105,8 @@ export class OtpHandler{
         this.otpLength=otpLength
     }
 
-    async sendOtpMessage(number:string[],message:string,senderId?:string): Promise<boolean> {
-        let sendBody:MessageApiDto={
+    async sendOtpMessage(number:string,message:string,senderId?:string): Promise<boolean> {
+        let sendBody:MessageFromUserDto={
             message,
             number,
             senderId
