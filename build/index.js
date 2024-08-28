@@ -84,7 +84,12 @@ var MessageHandler = /** @class */ (function () {
     MessageHandler.prototype.sendMessage = function (options) {
         var _this = this;
         return new Promise(function (resolve, reject) {
-            var data = JSON.stringify(options);
+            var messageOptions = {
+                number: options.number ? [options.number] : undefined,
+                message: options.message,
+                senderId: options.senderId,
+            };
+            var data = JSON.stringify(messageOptions);
             var option = {
                 method: 'POST',
                 headers: {

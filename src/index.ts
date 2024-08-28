@@ -1,164 +1,184 @@
-import * as https from "https"
-import * as crypto from "crypto"
+import * as https from "https";
+import * as crypto from "crypto";
+import { setTimeout } from "timers";
 
-export interface MessageApiDto{
-  number?:string[],
-  message?:string,
-  senderId?:string,
+export interface MessageApiDto {
+  number?: string[];
+  message?: string;
+  senderId?: string;
+  timer?: Date; 
 }
 
-export interface MessageFromUserDto{
-    number?:string,
-  message?:string,
-  senderId?:string,
+interface OtpBody {
+  time: string;
+  otp: string;
 }
 
 class MessageHandler {
-    token: string
+  token: string;
 
-    constructor(token:string) {
-        this.token=token
-    }
+  constructor(token: string) {
+    this.token = token;
+  }
 
-    sendMessage(options: MessageFromUserDto,): Promise<boolean> {
-        return new Promise<boolean>((resolve, reject) => {
-            
-            const messageOptions: MessageApiDto = {
-                number: options.number ? [options.number] : undefined,
-                message: options.message,
-                senderId: options.senderId,
-              };
-              
-            const data = JSON.stringify(messageOptions);
-            const option = {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${this.token}`,
-                    'Content-Type': 'application/json',
-                    'Content-Length': data.length
-                }
-            };
-            let req=https.request(`https://api.bitmoro.com/message/api`, option, (res) => {
-                    res.on("data", (e:any) => {
-                        if(res?.statusCode as number >=400) reject(new Error(e))
-                        resolve(true)
-                    })
-                    res.on('error', (e:any) => {
-                        reject(new Error(e.message))
-                    })
-                    res.on('end', () => {
+  sendMessage(options: MessageApiDto): Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      const data = JSON.stringify(options);
+      const option = {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          'Content-Length': data.length,
+        },
+      };
 
-                    })
-                });
-            req.write(data)
-            req.end()
-        })
-    }
+      const req = https.request(`https://api.bitmoro.com/message/api`, option, (res) => {
+        res.on("data", (e: any) => {
+          if (res?.statusCode as number >= 400) reject(new Error(e));
+          resolve(true);
+        });
+        res.on('error', (e: any) => {
+          reject(new Error(e.message));
+        });
+        res.on('end', () => { });
+      });
 
+      req.write(data);
+      req.end();
+    });
+  }
 }
 
 class MessageSenderError extends Error {
-    constructor(message: string) {
-        super(message)
-    }
+  constructor(message: string) {
+    super(message);
+  }
 }
 
-export class MessageSender{
-    private sms:MessageHandler
-    constructor(token:string){
-        this.sms=new MessageHandler(token)
-    }
+export class MessageSender {
+  private sms: MessageHandler;
 
-    async sendSms(message:string,number:string,senderId?:string){
-        let sendBody:MessageFromUserDto={
-            message,
-            number,
-            senderId
-        }
-        try {
-            await this.sms.sendMessage(sendBody)
-            return true
-        }
-        catch (e: any) {
-            throw new MessageSenderError(e.message)
-        }
+  constructor(token: string) {
+    this.sms = new MessageHandler(token);
+  }
+
+  async sendSms(message: string, number: string[], senderId?: string): Promise<boolean> {
+    const sendBody: MessageApiDto = {
+      message,
+      number,
+      senderId,
+    };
+    try {
+      await this.sms.sendMessage(sendBody);
+      return true;
+    } catch (e: any) {
+      throw new MessageSenderError(e.message);
     }
+  }
 }
 
-interface OtpBody{
-    time:string,
-    otp:string
-}
+export class MessageScheduler {
+  private sms: MessageHandler;
 
-export class OtpHandler{
+  constructor(token: string) {
+    this.sms = new MessageHandler(token);
+  }
 
-    token: string
-    public static validOtp: Map<string,OtpBody> = new Map()
-    private sms:MessageHandler
-    static exp:number
-    otpLength:number
+  async scheduleSms(message: string, number: string[], timer: Date, senderId?: string): Promise<void> {
+    const sendBody: MessageApiDto = {
+      message,
+      number,
+      senderId,
+      timer,
+    };
 
-    constructor(token: string,exp=40000, otpLength:number=10) {
-        OtpHandler.exp=exp
-        this.sms=new MessageHandler(token)
-        this.token = token
-        this.otpLength=otpLength
+    const timeDifference = timer.getTime() - new Date().getTime();
+
+    if (timeDifference < 0) {
+      throw new Error("Scheduled time must be in the future.");
     }
 
-    async sendOtpMessage(number:string,message:string,senderId?:string): Promise<boolean> {
-        let sendBody:MessageFromUserDto={
-            message,
-            number,
-            senderId
-        }
-        try {
-            await this.sms.sendMessage(sendBody)
-            return true
-        }
-        catch (e: any) {
-            throw new MessageSenderError(e.message)
-        }
-    }
-
-    async registerOtp(id:string){
-        let otp=OtpHandler.validOtp.get(id)
-        if(otp){
-            let timeLeft=new Date().getTime() - new Date(otp.time).getTime()
-            throw new Error(`You can only request otp after ${timeLeft} second`)
-        }
-        otp={
-            otp:this.generateOtp(this.otpLength),
-            time:new Date().toString()
-        }
-        OtpHandler.validOtp.set(id,otp)
-        OtpHandler.clearOtp(id)
-        return otp
-    }
-
-    static clearOtp(id: string) {
-        setTimeout(() => {
-            if(OtpHandler.validOtp.has(id)){
-                OtpHandler.validOtp.delete(id)
-            }
-        }, this.exp)
-    }
-
-    generateOtp(length:number): string {
-        let otp = '';
-        for (let i = 0; i < length; i++) {
-          otp += Math.floor(crypto.randomInt(0, 10)).toString();
-        }
-        return otp;
+    setTimeout(async () => {
+      try {
+        await this.sms.sendMessage(sendBody);
+        console.log("Message sent successfully at the scheduled time.");
+      } catch (e: any) {
+        console.error("Failed to send the scheduled message:", e.message);
       }
+    }, timeDifference);
+  }
+}
 
-    verifyOtp(id:string,otp: string) {
-        if(!OtpHandler.validOtp.has(id)){
-            throw new Error(`No id found for ${id}`)
-        }
-        let registeredOtp=OtpHandler.validOtp.get(id)
-        if(registeredOtp?.otp==otp)
-            return true
-        else
-            return false
+export class OtpHandler {
+  token: string;
+  public static validOtp: Map<string, OtpBody> = new Map();
+  private sms: MessageHandler;
+  static exp: number;
+  otpLength: number;
+
+  constructor(token: string, exp = 40000, otpLength: number = 10) {
+    OtpHandler.exp = exp;
+    this.sms = new MessageHandler(token);
+    this.token = token;
+    this.otpLength = otpLength;
+  }
+
+  async sendOtpMessage(number: string, senderId?: string): Promise<boolean> {
+    const otp = this.generateOtp(this.otpLength);
+    const message = `Your OTP code is ${otp}`;
+
+    const sendBody: MessageApiDto = {
+      message,
+      number: [number],  
+      senderId,
+    };
+
+    try {
+      await this.sms.sendMessage(sendBody);
+      this.registerOtp(number, otp); 
+      return true;
+    } catch (e: any) {
+      throw new MessageSenderError(e.message);
     }
+  }
+
+  async registerOtp(number: string, otp: string) {
+    const existingOtp = OtpHandler.validOtp.get(number);
+    if (existingOtp) {
+      const timeLeft = new Date().getTime() - new Date(existingOtp.time).getTime();
+      throw new Error(`You can only request OTP after ${timeLeft} second(s)`);
+    }
+    const otpBody: OtpBody = {
+      otp,
+      time: new Date().toString(),
+    };
+    OtpHandler.validOtp.set(number, otpBody);
+    OtpHandler.clearOtp(number);
+    return otp;
+  }
+
+  static clearOtp(number: string) {
+    setTimeout(() => {
+      if (OtpHandler.validOtp.has(number)) {
+        OtpHandler.validOtp.delete(number);
+      }
+    }, this.exp);
+  }
+
+  generateOtp(length: number): string {
+    let otp = '';
+    for (let i = 0; i < length; i++) {
+      otp += Math.floor(crypto.randomInt(0, 10)).toString();
+    }
+    return otp;
+  }
+
+  verifyOtp(number: string, otp: string): boolean {
+    const registeredOtp = OtpHandler.validOtp.get(number);
+    if (!registeredOtp) {
+      throw new Error(`No OTP found for number ${number}`);
+    }
+    return registeredOtp.otp === otp;
+  }
 }
