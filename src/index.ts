@@ -63,11 +63,11 @@ export class MessageSender {
     this.sms = new MessageHandler(token);
   }
 
-  async sendSms(message: string, number: string[], senderId?: string): Promise<boolean> {
+  async sendSms(message: string, number: string[],senderId:string): Promise<boolean> {
     const sendBody: MessageApiDto = {
       message,
       number,
-      senderId,
+      senderId
     };
     try {
       await this.sms.sendMessage(sendBody);
@@ -124,14 +124,14 @@ export class OtpHandler {
     this.otpLength = otpLength;
   }
 
-  async sendOtpMessage(number: string, senderId?: string): Promise<boolean> {
+  async sendOtpMessage(number: string,senderId?:string): Promise<boolean> {
     const otp = this.generateOtp(this.otpLength);
     const message = `Your OTP code is ${otp}`;
 
     const sendBody: MessageApiDto = {
       message,
-      number: [number],  
-      senderId,
+      number: [number],
+      senderId
     };
 
     try {

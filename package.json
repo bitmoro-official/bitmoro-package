@@ -32,6 +32,7 @@
     "node": ">=14.0.0"
   },
   "dependencies": {
+    "bitmoro": "^1.0.14",
     "crypto": "^1.0.1",
     "https": "^1.0.0"
   }

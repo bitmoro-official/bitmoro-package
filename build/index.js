@@ -74,9 +74,10 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.OtpHandler = exports.MessageSender = void 0;
+exports.OtpHandler = exports.MessageScheduler = exports.MessageSender = void 0;
 var https = __importStar(require("https"));
 var crypto = __importStar(require("crypto"));
+var timers_1 = require("timers");
 var MessageHandler = /** @class */ (function () {
     function MessageHandler(token) {
         this.token = token;
@@ -84,19 +85,14 @@ var MessageHandler = /** @class */ (function () {
     MessageHandler.prototype.sendMessage = function (options) {
         var _this = this;
         return new Promise(function (resolve, reject) {
-            var messageOptions = {
-                number: options.number ? [options.number] : undefined,
-                message: options.message,
-                senderId: options.senderId,
-            };
-            var data = JSON.stringify(messageOptions);
+            var data = JSON.stringify(options);
             var option = {
                 method: 'POST',
                 headers: {
-                    'Authorization': "Bearer ".concat(_this.token),
+                    Authorization: "Bearer ".concat(_this.token),
                     'Content-Type': 'application/json',
-                    'Content-Length': data.length
-                }
+                    'Content-Length': data.length,
+                },
             };
             var req = https.request("https://api.bitmoro.com/message/api", option, function (res) {
                 res.on("data", function (e) {
@@ -107,8 +103,7 @@ var MessageHandler = /** @class */ (function () {
                 res.on('error', function (e) {
                     reject(new Error(e.message));
                 });
-                res.on('end', function () {
-                });
+                res.on('end', function () { });
             });
             req.write(data);
             req.end();
@@ -156,6 +151,51 @@ var MessageSender = /** @class */ (function () {
     return MessageSender;
 }());
 exports.MessageSender = MessageSender;
+var MessageScheduler = /** @class */ (function () {
+    function MessageScheduler(token) {
+        this.sms = new MessageHandler(token);
+    }
+    MessageScheduler.prototype.scheduleSms = function (message, number, timer, senderId) {
+        return __awaiter(this, void 0, void 0, function () {
+            var sendBody, timeDifference;
+            var _this = this;
+            return __generator(this, function (_a) {
+                sendBody = {
+                    message: message,
+                    number: number,
+                    senderId: senderId,
+                    timer: timer,
+                };
+                timeDifference = timer.getTime() - new Date().getTime();
+                if (timeDifference < 0) {
+                    throw new Error("Scheduled time must be in the future.");
+                }
+                (0, timers_1.setTimeout)(function () { return __awaiter(_this, void 0, void 0, function () {
+                    var e_2;
+                    return __generator(this, function (_a) {
+                        switch (_a.label) {
+                            case 0:
+                                _a.trys.push([0, 2, , 3]);
+                                return [4 /*yield*/, this.sms.sendMessage(sendBody)];
+                            case 1:
+                                _a.sent();
+                                console.log("Message sent successfully at the scheduled time.");
+                                return [3 /*break*/, 3];
+                            case 2:
+                                e_2 = _a.sent();
+                                console.error("Failed to send the scheduled message:", e_2.message);
+                                return [3 /*break*/, 3];
+                            case 3: return [2 /*return*/];
+                        }
+                    });
+                }); }, timeDifference);
+                return [2 /*return*/];
+            });
+        });
+    };
+    return MessageScheduler;
+}());
+exports.MessageScheduler = MessageScheduler;
 var OtpHandler = /** @class */ (function () {
     function OtpHandler(token, exp, otpLength) {
         if (exp === void 0) { exp = 40000; }
@@ -165,15 +205,17 @@ var OtpHandler = /** @class */ (function () {
         this.token = token;
         this.otpLength = otpLength;
     }
-    OtpHandler.prototype.sendOtpMessage = function (number, message, senderId) {
+    OtpHandler.prototype.sendOtpMessage = function (number, senderId) {
         return __awaiter(this, void 0, void 0, function () {
-            var sendBody, e_2;
+            var otp, message, sendBody, e_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
+                        otp = this.generateOtp(this.otpLength);
+                        message = "Your OTP code is ".concat(otp);
                         sendBody = {
                             message: message,
-                            number: number,
+                            number: [number],
                             senderId: senderId
                         };
                         _a.label = 1;
@@ -182,38 +224,39 @@ var OtpHandler = /** @class */ (function () {
                         return [4 /*yield*/, this.sms.sendMessage(sendBody)];
                     case 2:
                         _a.sent();
+                        this.registerOtp(number, otp);
                         return [2 /*return*/, true];
                     case 3:
-                        e_2 = _a.sent();
-                        throw new MessageSenderError(e_2.message);
+                        e_3 = _a.sent();
+                        throw new MessageSenderError(e_3.message);
                     case 4: return [2 /*return*/];
                 }
             });
         });
     };
-    OtpHandler.prototype.registerOtp = function (id) {
+    OtpHandler.prototype.registerOtp = function (number, otp) {
         return __awaiter(this, void 0, void 0, function () {
-            var otp, timeLeft;
+            var existingOtp, timeLeft, otpBody;
             return __generator(this, function (_a) {
-                otp = OtpHandler.validOtp.get(id);
-                if (otp) {
-                    timeLeft = new Date().getTime() - new Date(otp.time).getTime();
-                    throw new Error("You can only request otp after ".concat(timeLeft, " second"));
+                existingOtp = OtpHandler.validOtp.get(number);
+                if (existingOtp) {
+                    timeLeft = new Date().getTime() - new Date(existingOtp.time).getTime();
+                    throw new Error("You can only request OTP after ".concat(timeLeft, " second(s)"));
                 }
-                otp = {
-                    otp: this.generateOtp(this.otpLength),
-                    time: new Date().toString()
+                otpBody = {
+                    otp: otp,
+                    time: new Date().toString(),
                 };
-                OtpHandler.validOtp.set(id, otp);
-                OtpHandler.clearOtp(id);
+                OtpHandler.validOtp.set(number, otpBody);
+                OtpHandler.clearOtp(number);
                 return [2 /*return*/, otp];
             });
         });
     };
-    OtpHandler.clearOtp = function (id) {
-        setTimeout(function () {
-            if (OtpHandler.validOtp.has(id)) {
-                OtpHandler.validOtp.delete(id);
+    OtpHandler.clearOtp = function (number) {
+        (0, timers_1.setTimeout)(function () {
+            if (OtpHandler.validOtp.has(number)) {
+                OtpHandler.validOtp.delete(number);
             }
         }, this.exp);
     };
@@ -224,15 +267,12 @@ var OtpHandler = /** @class */ (function () {
         }
         return otp;
     };
-    OtpHandler.prototype.verifyOtp = function (id, otp) {
-        if (!OtpHandler.validOtp.has(id)) {
-            throw new Error("No id found for ".concat(id));
+    OtpHandler.prototype.verifyOtp = function (number, otp) {
+        var registeredOtp = OtpHandler.validOtp.get(number);
+        if (!registeredOtp) {
+            throw new Error("No OTP found for number ".concat(number));
         }
-        var registeredOtp = OtpHandler.validOtp.get(id);
-        if ((registeredOtp === null || registeredOtp === void 0 ? void 0 : registeredOtp.otp) == otp)
-            return true;
-        else
-            return false;
+        return registeredOtp.otp === otp;
     };
     OtpHandler.validOtp = new Map();
     return OtpHandler;
