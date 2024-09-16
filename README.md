@@ -1,5 +1,8 @@
 # Bitmoro Messaging and OTP Library [![NPM version](https://img.shields.io/npm/v/bitmoro.svg)](https://npmjs.org/package/bitmoro) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/bitmoro)
 
+https://bitmoro.com
+
+
 This library provides a convenient interface for sending messages and handling OTP (One-Time Password) operations using the Bitmoro API from TypeScript or JavaScript.
 
 ## Installation
@@ -119,4 +122,7 @@ main();
 - **License**: Provides information about the project's license.
 
 This format ensures that users have a comprehensive understanding of the library's capabilities and how to effectively use it in their projects. Adjust the content as necessary to fit additional features or specific documentation needs.
+
+Visit our website for more info
+https://bitmoro.com
 
