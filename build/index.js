@@ -205,13 +205,12 @@ var OtpHandler = /** @class */ (function () {
         this.token = token;
         this.otpLength = otpLength;
     }
-    OtpHandler.prototype.sendOtpMessage = function (number, senderId) {
+    OtpHandler.prototype.sendOtpMessage = function (id, otp, number, senderId) {
         return __awaiter(this, void 0, void 0, function () {
-            var otp, message, sendBody, e_3;
+            var message, sendBody, e_3;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
-                        otp = this.generateOtp(this.otpLength);
                         message = "Your OTP code is ".concat(otp);
                         sendBody = {
                             message: message,
@@ -224,7 +223,6 @@ var OtpHandler = /** @class */ (function () {
                         return [4 /*yield*/, this.sms.sendMessage(sendBody)];
                     case 2:
                         _a.sent();
-                        this.registerOtp(number, otp);
                         return [2 /*return*/, true];
                     case 3:
                         e_3 = _a.sent();
@@ -234,24 +232,19 @@ var OtpHandler = /** @class */ (function () {
             });
         });
     };
-    OtpHandler.prototype.registerOtp = function (number, otp) {
-        return __awaiter(this, void 0, void 0, function () {
-            var existingOtp, timeLeft, otpBody;
-            return __generator(this, function (_a) {
-                existingOtp = OtpHandler.validOtp.get(number);
-                if (existingOtp) {
-                    timeLeft = new Date().getTime() - new Date(existingOtp.time).getTime();
-                    throw new Error("You can only request OTP after ".concat(timeLeft, " second(s)"));
-                }
-                otpBody = {
-                    otp: otp,
-                    time: new Date().toString(),
-                };
-                OtpHandler.validOtp.set(number, otpBody);
-                OtpHandler.clearOtp(number);
-                return [2 /*return*/, otp];
-            });
-        });
+    OtpHandler.prototype.registerOtp = function (id) {
+        var existingOtp = OtpHandler.validOtp.get(id);
+        if (existingOtp) {
+            var timeLeft = new Date().getTime() - new Date(existingOtp.time).getTime();
+            throw new Error("You can only request OTP after ".concat(timeLeft, " second(s)"));
+        }
+        var otpBody = {
+            otp: this.generateOtp(this.otpLength),
+            time: new Date().toString(),
+        };
+        OtpHandler.validOtp.set(id, otpBody);
+        OtpHandler.clearOtp(id);
+        return otpBody;
     };
     OtpHandler.clearOtp = function (number) {
         (0, timers_1.setTimeout)(function () {

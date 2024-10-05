@@ -33,7 +33,7 @@ class MessageHandler {
         },
       };
 
-      const req = https.request(`https://api.bitmoro.com/message/api`, option, (res) => {
+      const req = https.request(`https://bitmoro.com/api/message/api`, option, (res) => {
         res.on("data", (e: any) => {
           if (res?.statusCode as number >= 400) reject(new Error(e));
           resolve(true);
@@ -45,6 +45,7 @@ class MessageHandler {
       });
 
       req.write(data);
+      console.log("Message sent successfully");
       req.end();
     });
   }
@@ -124,10 +125,9 @@ export class OtpHandler {
     this.otpLength = otpLength;
   }
 
-  async sendOtpMessage(number: string,senderId?:string): Promise<boolean> {
-    const otp = this.generateOtp(this.otpLength);
-    const message = `Your OTP code is ${otp}`;
+  async sendOtpMessage(otp:string,number:string,senderId?:string): Promise<boolean> {
 
+    const message = `Your OTP code is ${otp}`;
     const sendBody: MessageApiDto = {
       message,
       number: [number],
@@ -135,27 +135,27 @@ export class OtpHandler {
     };
 
     try {
-      await this.sms.sendMessage(sendBody);
-      this.registerOtp(number, otp); 
+      this.sms.sendMessage(sendBody);
+      console.log("OTP sent successfully");
       return true;
     } catch (e: any) {
       throw new MessageSenderError(e.message);
     }
   }
 
-  async registerOtp(number: string, otp: string) {
-    const existingOtp = OtpHandler.validOtp.get(number);
+  registerOtp(id:string) {
+    const existingOtp = OtpHandler.validOtp.get(id);
     if (existingOtp) {
       const timeLeft = new Date().getTime() - new Date(existingOtp.time).getTime();
-      throw new Error(`You can only request OTP after ${timeLeft} second(s)`);
+      throw new Error(`You can only request OTP after ${timeLeft/1000} seconds`);
     }
     const otpBody: OtpBody = {
-      otp,
+      otp:this.generateOtp(this.otpLength),
       time: new Date().toString(),
     };
-    OtpHandler.validOtp.set(number, otpBody);
-    OtpHandler.clearOtp(number);
-    return otp;
+    OtpHandler.validOtp.set(id, otpBody);
+    OtpHandler.clearOtp(id);
+    return otpBody;
   }
 
   static clearOtp(number: string) {

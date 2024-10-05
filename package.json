@@ -6,7 +6,8 @@
   "types": "build/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "nodemon --watch src --ext ts --exec 'ts-node -r tsconfig-paths/register src/index.ts'",
+    "dev": "ts-node-dev tests.ts",
+    "start": "node build/index.js",
     "prepare": "npm run build",
     "prepublishOnly": "npm test",
     "preversion": "npm run lint",
@@ -19,9 +20,11 @@
   "author": "Backend Bitmoro",
   "license": "ISC",
   "devDependencies": {
+    "@types/express": "^5.0.0",
     "@types/node": "^22.5.1",
     "nodemon": "^2.0.22",
     "ts-node": "^10.9.1",
+    "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^5.5.4"
   },
@@ -32,8 +35,9 @@
     "node": ">=14.0.0"
   },
   "dependencies": {
-    "bitmoro": "^1.0.14",
+    "bitmoro": "^1.0.18",
     "crypto": "^1.0.1",
+    "express": "^4.21.0",
     "https": "^1.0.0"
   }
 }
