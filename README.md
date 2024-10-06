@@ -1,128 +1,196 @@
-# Bitmoro Messaging and OTP Library [![NPM version](https://img.shields.io/npm/v/bitmoro.svg)](https://npmjs.org/package/bitmoro) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/bitmoro)
+# Bitmoro Messaging and OTP Library 
+[![NPM version](https://img.shields.io/npm/v/bitmoro.svg)](https://npmjs.org/package/bitmoro) ![npm bundle size](https://img.shields.io/bundlephobia/minzip/bitmoro)
 
-https://bitmoro.com
+[Visit Bitmoro](https://bitmoro.com)
 
-
-This library provides a convenient interface for sending messages and handling OTP (One-Time Password) operations using the Bitmoro API from TypeScript or JavaScript.
+This library provides a convenient interface for sending messages and handling OTP (One-Time Password) operations using the Bitmoro API from js or JavaScript.
 
 ## Installation
 
+To install the Bitmoro library, you can use npm. Open your terminal and run:
+
 ```sh
 npm install bitmoro
-
 ```
 
 ## Usage
 
-The code below shows how to get started using the messaging and OTP features.
+This section covers the basic usage of the library, demonstrating how to initialize the library, send messages, and handle OTP operations.
+
+### Importing the Library
+
+You need to import the necessary classes from the library in your project. Here’s how to do it:
+
+```js
+import { OtpHandler, MessageScheduler, MessageSender } from 'bitmoro';
+```
+
+### Initializing Services
+
+You will need to initialize the `OtpHandler`, `MessageScheduler`, and `MessageSender` classes with your Bitmoro API token. Here’s an example:
+
+```js
+const otpService = new OtpHandler('YOUR_API_TOKEN', 50000, 5);
+const messageScheduler = new MessageScheduler('YOUR_API_TOKEN');
+const messageSender = new MessageSender('YOUR_API_TOKEN');
+```
 
 ### Sending Messages
 
+To send an SMS immediately, you can use the `sendSms` method of the `MessageSender` class:
+
 ```js
-import { MessageSender } from 'bitmoro';
-
-const token = process.env['BITMORO_API_TOKEN'];
-const sender = new MessageSender(token);
-
-async function sendMessage() {
-    try {
-        const success = await sender.sendSms('Hello, World!', ['+1234567890'], 'YourSenderId');
-        console.log('Message sent:', success);
-    } catch (error) {
-        console.error('Error sending message:', error);
-    }
+const success = await messageSender.sendSms('Hello, this is a test message!', ['9869363132'], 'SENDER_ID');
+if (success) {
+    console.log('SMS sent successfully');
+} else {
+    console.log('Failed to send SMS');
 }
+```
 
-sendMessage();
+### Scheduling Messages
 
+To schedule an SMS, you can use the `scheduleSms` method of the `MessageScheduler` class:
+
+```js
+const scheduleTime = new Date(Date.now() + 60000); // Schedule for 1 minute from now
+await messageScheduler.scheduleSms('This is a scheduled message', ['9869363132'], scheduleTime, 'SENDER_ID');
+console.log('SMS scheduled successfully');
 ```
 
 ### Handling OTPs
 
+To handle OTPs, you can use the `OtpHandler` class to register and send OTPs, and verify them as follows:
+
+#### Registering an OTP
+
 ```js
-import { OtpHandler } from 'bitmoro';
-
-const token = process.env['BITMORO_API_TOKEN'];
-const otpHandler = new OtpHandler(token);
-
-async function sendOtp() {
-    try {
-        const otp = await otpHandler.registerOtp('user-id');
-        console.log('OTP registered:', otp);
-    } catch (error) {
-        console.error('Error registering OTP:', error);
-    }
-}
-
-async function verifyOtp() {
-    try {
-        const isValid = otpHandler.verifyOtp('user-id', '123456');
-        console.log('OTP valid:', isValid);
-    } catch (error) {
-        console.error('Error verifying OTP:', error);
-    }
-}
-
-sendOtp();
-verifyOtp();
-
+const otpId = 'user_1234'; // Your unique user identifier
+const otp = otpService.registerOtp(otpId);
 ```
+
+#### Sending an OTP
+
+```js
+await otpService.sendOtpMessage(otp.otp, '9869363132');
+console.log('OTP sent successfully');
+```
+
+#### Verifying an OTP
+
+To verify an OTP that a user provides:
+
+```js
+const isValid = otpService.verifyOtp(otpId, userProvidedOtp);
+if (isValid) {
+    console.log('OTP is valid');
+} else {
+    console.log('OTP is invalid');
+}
+```
+
+## API Reference
+
+### Classes Overview
+
+| Class Name         | Description                                                                                     |
+|--------------------|-------------------------------------------------------------------------------------------------|
+| `OtpHandler`       | Handles OTP registration, sending, and verification.                                           |
+| `MessageScheduler`  | Manages scheduling SMS messages to be sent at specific times.                                 |
+| `MessageSender`    | Provides methods for sending SMS messages immediately.                                         |
+
+### Class Details
+
+#### OtpHandler
+
+- **Constructor**: `new OtpHandler(token: string, expiry: number, attempts: number)`
+  - **Parameters**:
+    - `token`: Your Bitmoro API token.
+    - `expiry`: OTP expiry time in seconds.
+    - `attempts`: Maximum number of OTP attempts.
+
+- **Methods**:
+  - `registerOtp(id: string)`: Registers a new OTP for the given ID and returns the OTP object.
+  - `sendOtpMessage(otp: string, number: string)`: Sends the OTP to the specified number.
+  - `verifyOtp(id: string, otp: string)`: Verifies the OTP for the given ID.
+
+#### MessageScheduler
+
+- **Constructor**: `new MessageScheduler(token: string)`
+  - **Parameters**:
+    - `token`: Your Bitmoro API token.
+
+- **Methods**:
+  - `scheduleSms(message: string, numbers: string[], time: Date, senderId: string)`: Schedules an SMS to be sent at a specified time.
+
+#### MessageSender
+
+- **Constructor**: `new MessageSender(token: string)`
+  - **Parameters**:
+    - `token`: Your Bitmoro API token.
+
+- **Methods**:
+  - `sendSms(message: string, numbers: string[], senderId: string)`: Sends an SMS to the specified numbers immediately.
 
 ## Features
 
-- **Send Messages**: Easily send SMS messages to multiple recipients using a straightforward API.
-- **OTP Generation and Verification**: Generate secure OTPs and verify them for authentication purposes.
-- **Error Handling**: Includes custom error classes to handle API errors effectively.
+- **OTP Management**: Easily register, send, and verify OTPs.
+- **Message Scheduling**: Schedule messages to be sent at a specific time.
+- **Immediate SMS Sending**: Send SMS messages instantly.
 
-### Streaming Responses
+## Example Express Application
 
-The library supports streaming responses for real-time applications. This can be particularly useful for use cases where immediate feedback is required.
-
-### Request & Response Types
-
-The library includes TypeScript definitions for all request parameters and response fields, ensuring type safety and better developer experience.
-
-### Automated Function Calls
-
-Automate repetitive tasks by integrating function calls within your message handling and OTP verification processes.
-
-### Bulk Operations
-
-For applications requiring bulk message sending or OTP generation, the library provides helper functions to streamline these operations.
-
-## Error Handling
-
-When the library is unable to connect to the API, or if the API returns a non-success status code, a `MessageSenderError` will be thrown. Here’s an example of how to handle such errors:
+Here’s an example of how you can use the library in an Express application:
 
 ```js
-async function main() {
-  try {
-    await sender.sendSms('Hello, World!', ['+1234567890']);
-  } catch (err) {
-    if (err instanceof MessageSenderError) {
-      console.log(err.message); // Error message
-    } else {
-      throw err;
-    }
-  }
-}
+import express, { Request, Response } from 'express';
+import { OtpHandler, MessageScheduler, MessageSender } from 'bitmoro';
 
-main();
+const app = express();
+app.use(express.json());
 
+const otpService = new OtpHandler('YOUR_API_TOKEN', 50000, 5);
+const messageScheduler = new MessageScheduler('YOUR_API_TOKEN');
+const messageSender = new MessageSender('YOUR_API_TOKEN');
+
+app.get('/send-Otp', async (req: Request, res: Response) => {
+    const otp = otpService.registerOtp('user_1234');
+    await otpService.sendOtpMessage(otp.otp, '9869363132');
+    res.send({ message: 'OTP sent successfully', id: 'user_1234' });
+});
+
+app.post('/verify-Otp', (req: Request, res: Response) => {
+    const { otp, id } = req.body;
+    const isValid = otpService.verifyOtp(id, otp);
+    res.send({ isValid });
+});
+
+app.post('/schedule-sms', async (req: Request, res: Response) => {
+    const { message, number, senderId, time } = req.body;
+    const timer = new Date(time);
+    await messageScheduler.scheduleSms(message, [number], timer, senderId);
+    res.send({ message: 'SMS scheduled successfully' });
+});
+
+app.post('/send-sms', async (req: Request, res: Response) => {
+    const { message, number, senderId } = req.body;
+    const success = await messageSender.sendSms(message, [number], senderId);
+    res.send({ message: success ? 'SMS sent successfully' : 'Failed to send SMS' });
+});
+
+app.listen(59900, () => {
+    console.log('Server is running on http://localhost:59900');
+});
 ```
 
+## License
 
-### Key Sections Explained:
+This library is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
 
-- **Installation**: Provides a command for installing the library via npm.
-- **Usage**: Offers examples demonstrating how to use the `MessageSender` and `OtpHandler` classes for sending messages and handling OTPs.
-- **Features**: Lists the main features of the library, including messaging, OTP handling, streaming responses, and more.
-- **Error Handling**: Describes how errors are managed and provides example code for handling API errors.
-- **Contributing**: Encourages contributions and links to the guidelines.
-- **License**: Provides information about the project's license.
+## Contributing
 
-This format ensures that users have a comprehensive understanding of the library's capabilities and how to effectively use it in their projects. Adjust the content as necessary to fit additional features or specific documentation needs.
+Contributions are welcome! Please open issues for bugs and feature requests, or submit pull requests for changes.
 
-Visit our website for more info
-https://bitmoro.com
+---
 
+Feel free to adjust any sections or details to suit your specific needs! If you need further modifications or additions, let me know!
