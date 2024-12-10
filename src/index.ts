@@ -116,7 +116,7 @@ export class MessageScheduler {
   }
 }
 
-export class OtpMessage{
+export class OtpHandler{
 
   public static validOtp: Map<string,OtpBody> = new Map()
   private sms:MessageHandler
@@ -124,7 +124,7 @@ export class OtpMessage{
   otpLength:number
 
   constructor(api:string,exp:number=40, otpLength:number=4) {
-      OtpMessage.exp=exp
+      OtpHandler.exp=exp
       this.sms=new MessageHandler(api)
       this.otpLength=otpLength
   }
@@ -156,26 +156,26 @@ export class OtpMessage{
    * @emits Error if the otp is already present in the given id waiting to get expired
    */
   async registerOtp(id:string): Promise<OtpBody>{
-      let otp=OtpMessage.validOtp.get(id)
+      let otp=OtpHandler.validOtp.get(id)
       if(otp){
           let timeLeft=new Date().getTime() - new Date(otp.time).getTime()
-          throw new Error(`You can only request otp after ${OtpMessage.exp-Math.ceil(timeLeft/1000)} second`)
+          throw new Error(`You can only request otp after ${OtpHandler.exp-Math.ceil(timeLeft/1000)} second`)
       }
       otp={
           otp:this.generateOtp(this.otpLength),
           time:new Date().toString()
       }
-      OtpMessage.validOtp.set(id,otp)
-      OtpMessage.clearOtp(id)
+      OtpHandler.validOtp.set(id,otp)
+      OtpHandler.clearOtp(id)
       return otp
   }
 
   static clearOtp(id: string) {
       setTimeout(() => {
-          if(OtpMessage.validOtp.has(id)){
-              OtpMessage.validOtp.delete(id)
+          if(OtpHandler.validOtp.has(id)){
+              OtpHandler.validOtp.delete(id)
           }
-      }, OtpMessage.exp*1000)
+      }, OtpHandler.exp*1000)
   }
 
   /**
@@ -200,13 +200,13 @@ export class OtpMessage{
    * @emits Error if the id doesn't exists in otp store
    */
   verifyOtp(id:string,otp: string) {
-      if(!OtpMessage.validOtp.has(id)){
+      if(!OtpHandler.validOtp.has(id)){
           throw new Error(`No id found for ${id}`)
       }
-      let registeredOtp=OtpMessage.validOtp.get(id)
+      let registeredOtp=OtpHandler.validOtp.get(id)
       if(registeredOtp?.otp==otp)
       {
-          OtpMessage.validOtp.delete(id)
+          OtpHandler.validOtp.delete(id)
           return true
       }
       else
@@ -229,6 +229,6 @@ export class Bitmoro{
   }
 
   getOtpHandler(exp:number=40, otpLength:number=4){
-    return new OtpMessage(this.api,exp,otpLength)
+    return new OtpHandler(this.api,exp,otpLength)
   }
 }

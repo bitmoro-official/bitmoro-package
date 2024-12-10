@@ -1,11 +1,11 @@
 
 import express, { Request, Response } from 'express';
-import { OtpMessage, MessageScheduler } from './src/index'; // Ensure MessageScheduler is imported
+import { OtpHandler, MessageScheduler } from './src/index'; // Ensure MessageScheduler is imported
 const app = express();
 app.use(express.json());
 
 // Initialize the OtpHandler
-const otpService = new OtpMessage('<test>', 50, 5);
+const otpService = new OtpHandler('<test>', 50, 5);
 
 // Initialize the MessageScheduler
 const messageScheduler = new MessageScheduler('<test>');
