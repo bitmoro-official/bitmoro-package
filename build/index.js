@@ -77,7 +77,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Bitmoro = exports.OtpMessage = exports.MessageScheduler = exports.MessageSender = void 0;
+exports.Bitmoro = exports.OtpHandler = exports.MessageScheduler = exports.MessageSender = void 0;
 var crypto = __importStar(require("crypto"));
 var timers_1 = require("timers");
 var axios_1 = __importDefault(require("axios"));
@@ -203,11 +203,11 @@ var MessageScheduler = /** @class */ (function () {
     return MessageScheduler;
 }());
 exports.MessageScheduler = MessageScheduler;
-var OtpMessage = /** @class */ (function () {
-    function OtpMessage(api, exp, otpLength) {
+var OtpHandler = /** @class */ (function () {
+    function OtpHandler(api, exp, otpLength) {
         if (exp === void 0) { exp = 40; }
         if (otpLength === void 0) { otpLength = 4; }
-        OtpMessage.exp = exp;
+        OtpHandler.exp = exp;
         this.sms = new MessageHandler(api);
         this.otpLength = otpLength;
     }
@@ -218,7 +218,7 @@ var OtpMessage = /** @class */ (function () {
      * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
      * @returns
      */
-    OtpMessage.prototype.sendOtpMessage = function (number, message, senderId) {
+    OtpHandler.prototype.sendOtpMessage = function (number, message, senderId) {
         return __awaiter(this, void 0, void 0, function () {
             var sendBody, e_3;
             return __generator(this, function (_a) {
@@ -247,31 +247,31 @@ var OtpMessage = /** @class */ (function () {
      * @param id unique id for otp registration can be userId
      * @emits Error if the otp is already present in the given id waiting to get expired
      */
-    OtpMessage.prototype.registerOtp = function (id) {
+    OtpHandler.prototype.registerOtp = function (id) {
         return __awaiter(this, void 0, void 0, function () {
             var otp, timeLeft;
             return __generator(this, function (_a) {
-                otp = OtpMessage.validOtp.get(id);
+                otp = OtpHandler.validOtp.get(id);
                 if (otp) {
                     timeLeft = new Date().getTime() - new Date(otp.time).getTime();
-                    throw new Error("You can only request otp after ".concat(OtpMessage.exp - Math.ceil(timeLeft / 1000), " second"));
+                    throw new Error("You can only request otp after ".concat(OtpHandler.exp - Math.ceil(timeLeft / 1000), " second"));
                 }
                 otp = {
                     otp: this.generateOtp(this.otpLength),
                     time: new Date().toString()
                 };
-                OtpMessage.validOtp.set(id, otp);
-                OtpMessage.clearOtp(id);
+                OtpHandler.validOtp.set(id, otp);
+                OtpHandler.clearOtp(id);
                 return [2 /*return*/, otp];
             });
         });
     };
-    OtpMessage.clearOtp = function (id) {
+    OtpHandler.clearOtp = function (id) {
         (0, timers_1.setTimeout)(function () {
-            if (OtpMessage.validOtp.has(id)) {
-                OtpMessage.validOtp.delete(id);
+            if (OtpHandler.validOtp.has(id)) {
+                OtpHandler.validOtp.delete(id);
             }
-        }, OtpMessage.exp * 1000);
+        }, OtpHandler.exp * 1000);
     };
     /**
      *
@@ -279,7 +279,7 @@ var OtpMessage = /** @class */ (function () {
      * @returns
     
      */
-    OtpMessage.prototype.generateOtp = function (length) {
+    OtpHandler.prototype.generateOtp = function (length) {
         var otp = '';
         for (var i = 0; i < length; i++) {
             otp += Math.floor(crypto.randomInt(0, 10)).toString();
@@ -293,22 +293,22 @@ var OtpMessage = /** @class */ (function () {
      * @returns true if otp is valid
      * @emits Error if the id doesn't exists in otp store
      */
-    OtpMessage.prototype.verifyOtp = function (id, otp) {
-        if (!OtpMessage.validOtp.has(id)) {
+    OtpHandler.prototype.verifyOtp = function (id, otp) {
+        if (!OtpHandler.validOtp.has(id)) {
             throw new Error("No id found for ".concat(id));
         }
-        var registeredOtp = OtpMessage.validOtp.get(id);
+        var registeredOtp = OtpHandler.validOtp.get(id);
         if ((registeredOtp === null || registeredOtp === void 0 ? void 0 : registeredOtp.otp) == otp) {
-            OtpMessage.validOtp.delete(id);
+            OtpHandler.validOtp.delete(id);
             return true;
         }
         else
             return false;
     };
-    OtpMessage.validOtp = new Map();
-    return OtpMessage;
+    OtpHandler.validOtp = new Map();
+    return OtpHandler;
 }());
-exports.OtpMessage = OtpMessage;
+exports.OtpHandler = OtpHandler;
 var Bitmoro = /** @class */ (function () {
     function Bitmoro(api) {
         this.sms = new MessageHandler(api);
@@ -320,7 +320,7 @@ var Bitmoro = /** @class */ (function () {
     Bitmoro.prototype.getOtpHandler = function (exp, otpLength) {
         if (exp === void 0) { exp = 40; }
         if (otpLength === void 0) { otpLength = 4; }
-        return new OtpMessage(this.api, exp, otpLength);
+        return new OtpHandler(this.api, exp, otpLength);
     };
     return Bitmoro;
 }());
