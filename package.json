@@ -35,6 +35,8 @@
     "node": ">=14.0.0"
   },
   "dependencies": {
+    "@types/axios": "^0.14.4",
+    "axios": "^1.7.9",
     "bitmoro": "^1.0.18",
     "crypto": "^1.0.1",
     "express": "^4.21.0",

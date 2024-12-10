@@ -143,43 +143,64 @@ if (isValid) {
 Here’s an example of how you can use the library in an Express application:
 
 ```js
-import express, { Request, Response } from 'express';
-import { OtpHandler, MessageScheduler, MessageSender } from 'bitmoro';
 
+import express, { Request, Response } from 'express';
+import { OtpMessage, MessageScheduler } from './src/index'; // Ensure MessageScheduler is imported
 const app = express();
 app.use(express.json());
 
-const otpService = new OtpHandler('YOUR_API_TOKEN', 50000, 5);
-const messageScheduler = new MessageScheduler('YOUR_API_TOKEN');
-const messageSender = new MessageSender('YOUR_API_TOKEN');
+// Initialize the OtpHandler
+const otpService = new OtpMessage('<test>', 50, 5);
 
+// Initialize the MessageScheduler
+const messageScheduler = new MessageScheduler('<test>');
+
+
+
+// Register an OTP for a specific ID
+
+// Endpoint to send OTP
 app.get('/send-Otp', async (req: Request, res: Response) => {
-    const otp = otpService.registerOtp('user_1234');
-    await otpService.sendOtpMessage(otp.otp, '9869363132');
-    res.send({ message: 'OTP sent successfully', id: 'user_1234' });
+    try{
+        const otp = await otpService.registerOtp("1234");
+        console.log(otp)
+        await otpService.sendOtpMessage("9842882495",`${otp.otp}`);
+        res.send({ message: "Otp sent successfully", id: "1234" });
+    }
+    catch(e:any){
+        res.send({message:e.message})
+    }
 });
 
-app.post('/verify-Otp', (req: Request, res: Response) => {
-    const { otp, id } = req.body;
-    const isValid = otpService.verifyOtp(id, otp);
+// Endpoint to verify OTP
+app.get('/verify-Otp', (req: Request, res: Response) => {
+    const otp = req.query.otp as string;
+    const isValid = otpService.verifyOtp("1234", otp);
     res.send({ isValid });
 });
 
+app.get("/bulk",(req:Request)=>{
+
+})
+
+// Endpoint to schedule an SMS
 app.post('/schedule-sms', async (req: Request, res: Response) => {
     const { message, number, senderId, time } = req.body;
+
+    // Ensure the time is a valid Date object
     const timer = new Date(time);
-    await messageScheduler.scheduleSms(message, [number], timer, senderId);
-    res.send({ message: 'SMS scheduled successfully' });
+    
+    try {
+        await messageScheduler.scheduleSms(message, [number], timer, senderId);
+        res.send({ message: "SMS scheduled successfully" });
+    } catch (error: any) {
+        res.status(400).send({ error: error.message });
+    }
 });
 
-app.post('/send-sms', async (req: Request, res: Response) => {
-    const { message, number, senderId } = req.body;
-    const success = await messageSender.sendSms(message, [number], senderId);
-    res.send({ message: success ? 'SMS sent successfully' : 'Failed to send SMS' });
-});
-
+// Start the server
 app.listen(59900, () => {
-    console.log('Server is running on http://localhost:59900');
+    console.log(`Server is running on http://localhost:59900`);
 });
 ```
 

@@ -1,6 +1,6 @@
-import * as https from "https";
 import * as crypto from "crypto";
 import { setTimeout } from "timers";
+import axios from "axios"
 
 export interface MessageApiDto {
   number?: string[];
@@ -14,6 +14,16 @@ interface OtpBody {
   otp: string;
 }
 
+class OtpSentError extends Error {
+  constructor(message: string) {
+      super(message)
+  }
+}
+
+interface SmsResponse{
+  failed:number
+}
+
 class MessageHandler {
   token: string;
 
@@ -21,8 +31,8 @@ class MessageHandler {
     this.token = token;
   }
 
-  sendMessage(options: MessageApiDto): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
+  sendMessage(options: MessageApiDto): Promise<SmsResponse> {
+    return new Promise<SmsResponse>((resolve, reject) => {
       const data = JSON.stringify(options);
       const option = {
         method: 'POST',
@@ -32,21 +42,18 @@ class MessageHandler {
           'Content-Length': data.length,
         },
       };
-
-      const req = https.request(`https://bitmoro.com/api/message/api`, option, (res) => {
-        res.on("data", (e: any) => {
-          if (res?.statusCode as number >= 400) reject(new Error(e));
-          resolve(true);
-        });
-        res.on('error', (e: any) => {
-          reject(new Error(e.message));
-        });
-        res.on('end', () => { });
-      });
-
-      req.write(data);
-      console.log("Message sent successfully");
-      req.end();
+      let response=''
+      axios.post(`https://bitmoro.com/api/message/api`,data,{headers:option.headers}).then(response=>{
+        try{
+            let parsedResponse=response.data
+            resolve(parsedResponse)
+        }
+        catch(e){
+          reject(e)
+        }
+    }).catch(e=>{
+      reject(e)
+    })
     });
   }
 }
@@ -103,82 +110,125 @@ export class MessageScheduler {
     setTimeout(async () => {
       try {
         await this.sms.sendMessage(sendBody);
-        console.log("Message sent successfully at the scheduled time.");
       } catch (e: any) {
-        console.error("Failed to send the scheduled message:", e.message);
       }
     }, timeDifference);
   }
 }
 
-export class OtpHandler {
-  token: string;
-  public static validOtp: Map<string, OtpBody> = new Map();
-  private sms: MessageHandler;
-  static exp: number;
-  otpLength: number;
+export class OtpMessage{
 
-  constructor(token: string, exp = 40000, otpLength: number = 10) {
-    OtpHandler.exp = exp;
-    this.sms = new MessageHandler(token);
-    this.token = token;
-    this.otpLength = otpLength;
+  public static validOtp: Map<string,OtpBody> = new Map()
+  private sms:MessageHandler
+  static exp:number
+  otpLength:number
+
+  constructor(api:string,exp:number=40, otpLength:number=4) {
+      OtpMessage.exp=exp
+      this.sms=new MessageHandler(api)
+      this.otpLength=otpLength
   }
 
-  async sendOtpMessage(otp:string,number:string,senderId?:string): Promise<boolean> {
-
-    const message = `Your OTP code is ${otp}`;
-    const sendBody: MessageApiDto = {
-      message,
-      number: [number],
-      senderId
-    };
-
-    try {
-      this.sms.sendMessage(sendBody);
-      console.log("OTP sent successfully");
-      return true;
-    } catch (e: any) {
-      throw new MessageSenderError(e.message);
-    }
-  }
-
-  registerOtp(id:string) {
-    const existingOtp = OtpHandler.validOtp.get(id);
-    if (existingOtp) {
-      const timeLeft = new Date().getTime() - new Date(existingOtp.time).getTime();
-      throw new Error(`You can only request OTP after ${timeLeft/1000} seconds`);
-    }
-    const otpBody: OtpBody = {
-      otp:this.generateOtp(this.otpLength),
-      time: new Date().toString(),
-    };
-    OtpHandler.validOtp.set(id, otpBody);
-    OtpHandler.clearOtp(id);
-    return otpBody;
-  }
-
-  static clearOtp(number: string) {
-    setTimeout(() => {
-      if (OtpHandler.validOtp.has(number)) {
-        OtpHandler.validOtp.delete(number);
+  /**
+   * 
+   * @param number phone number in which you want to send otp to
+   * @param message otp message body 
+   * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
+   * @returns 
+   */
+  async sendOtpMessage(number:string,message:string,senderId?:string){
+      let sendBody:MessageApiDto={
+          message,
+          number:[number],
+          senderId
       }
-    }, this.exp);
+      try {
+          return await this.sms.sendMessage(sendBody)
+      }
+      catch (e: any) {
+          throw new OtpSentError(e.message)
+      }
   }
 
-  generateOtp(length: number): string {
-    let otp = '';
-    for (let i = 0; i < length; i++) {
-      otp += Math.floor(crypto.randomInt(0, 10)).toString();
-    }
-    return otp;
+  /**
+   * 
+   * @param id unique id for otp registration can be userId
+   * @emits Error if the otp is already present in the given id waiting to get expired
+   */
+  async registerOtp(id:string): Promise<OtpBody>{
+      let otp=OtpMessage.validOtp.get(id)
+      if(otp){
+          let timeLeft=new Date().getTime() - new Date(otp.time).getTime()
+          throw new Error(`You can only request otp after ${OtpMessage.exp-Math.ceil(timeLeft/1000)} second`)
+      }
+      otp={
+          otp:this.generateOtp(this.otpLength),
+          time:new Date().toString()
+      }
+      OtpMessage.validOtp.set(id,otp)
+      OtpMessage.clearOtp(id)
+      return otp
   }
 
-  verifyOtp(number: string, otp: string): boolean {
-    const registeredOtp = OtpHandler.validOtp.get(number);
-    if (!registeredOtp) {
-      throw new Error(`No OTP found for number ${number}`);
+  static clearOtp(id: string) {
+      setTimeout(() => {
+          if(OtpMessage.validOtp.has(id)){
+              OtpMessage.validOtp.delete(id)
+          }
+      }, OtpMessage.exp*1000)
+  }
+
+  /**
+   * 
+   * @param length length of otp you want
+   * @returns 
+  
+   */
+  generateOtp(length:number): string {
+      let otp = '';
+      for (let i = 0; i < length; i++) {
+        otp += Math.floor(crypto.randomInt(0, 10)).toString();
+      }
+      return otp;
     }
-    return registeredOtp.otp === otp;
+
+  /**
+   * 
+   * @param id  unique id in which otp is registered
+   * @param otp otp of from user
+   * @returns true if otp is valid
+   * @emits Error if the id doesn't exists in otp store
+   */
+  verifyOtp(id:string,otp: string) {
+      if(!OtpMessage.validOtp.has(id)){
+          throw new Error(`No id found for ${id}`)
+      }
+      let registeredOtp=OtpMessage.validOtp.get(id)
+      if(registeredOtp?.otp==otp)
+      {
+          OtpMessage.validOtp.delete(id)
+          return true
+      }
+      else
+          return false
+  }
+}
+
+
+export class Bitmoro{
+  private sms:MessageHandler
+  private api:string
+
+  constructor(api:string) {
+    this.sms=new MessageHandler(api)
+    this.api=api
+  }
+
+  sendMessage(otp:MessageApiDto){
+    this.sms.sendMessage(otp)
+  }
+
+  getOtpHandler(exp:number=40, otpLength:number=4){
+    return new OtpMessage(this.api,exp,otpLength)
   }
 }
