@@ -2,26 +2,79 @@ import * as crypto from "crypto";
 import { setTimeout } from "timers";
 import axios from "axios"
 
-export interface MessageApiDto {
-  number?: string[];
-  message?: string;
-  senderId?: string;
-  timer?: Date; 
+
+
+export interface BitmoroMessageApiDto{
+  number:string[], // numbers to send message to
+  message:string, // message to send
+  senderId?:string, // senderId you want to send message from, but first should be registered in bitmoro
+  scheduledDate?:number; // time to send message in UNIX timestamp
+  callbackUrl?:string; // callback url to get response of message. Must be POST request
+}
+export interface BitmoroOtpApiDto{
+  number:string[], // numbers to send message to
+  message:string, // message to send
+  senderId?:string, // senderId you want to send message from, but first should be registered in bitmoro
+}
+export interface BitmoroDynamicMessageApiDto{
+contacts:{number:string,[key:string]:string | undefined}[], // array of contacts with number and other values. other values are replaced in message body having ${} in message body.
+message:string, // message to send . ${} is replaced by other values for each number in contacts
+senderId?:string, // senderId you want to send message from, but first should be registered in bitmoro
+scheduledDate?:number // time to send message in UNIX timestamp
+callbackUrl?:string // callback url to get response of message. Must be POST request
+defaultValues?:{[key:string]:string} // default values to replace in message body if some numbers don't have values to be replaced
+}
+
+export enum MESSAGE_STATUS{
+  PENDING="pending", // message is pending to be sent
+  DELIVERED="sent", // message is delivered
+  FAILED="failed", // message is failed to be sent
+  CANCEL="cancel" // message is cancelled
+}
+
+export interface BitmoroMessageResponse{
+status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message placed inside queue to be sent
+report:{
+  number:string, // number to which message is sent
+  message?:string, // message body
+  type:number, // type of message , 1 means ASCII message, 2 means Unicode message
+  credit:number, // credit spent to send a message
+}
+creditSpent:number,// total credit spent to send message
+messageId:string, // unique id of message
+senderId:string // senderId of message
+}
+
+
+export interface BitmoroCallbackResponse{
+messageId:string, // unique id of message
+message:string,// message body
+status:MESSAGE_STATUS,// status of message
+report:{
+  number:string,// number to which message is sent
+  message?:string, // if error in message, error message
+  status:"failed"|"success"|"cancelled", // status of message
+  creditCount:number // credit spent to send message
+}
+senderId:string // senderId of message
+deliveredDate:Date // date when message is delivered
+refunded:number // no of credit refunded
 }
 
 interface OtpBody {
-  time: string;
-  otp: string;
+  time: string; // time when otp is generated
+  otp: string; // otp generated
+}
+
+interface BitmoroOtpResponse {
+  failed: number // no of failed messages
+  messageId: string // unique id of message
 }
 
 class OtpSentError extends Error {
   constructor(message: string) {
       super(message)
   }
-}
-
-interface SmsResponse{
-  failed:number
 }
 
 class MessageHandler {
@@ -31,8 +84,8 @@ class MessageHandler {
     this.token = token;
   }
 
-  sendMessage(options: MessageApiDto): Promise<SmsResponse> {
-    return new Promise<SmsResponse>((resolve, reject) => {
+  sendMessage(options:BitmoroMessageApiDto): Promise<BitmoroMessageResponse > {
+    return new Promise<BitmoroMessageResponse>((resolve, reject) => {
       const data = JSON.stringify(options);
       const option = {
         method: 'POST',
@@ -42,7 +95,54 @@ class MessageHandler {
           'Content-Length': data.length,
         },
       };
-      let response=''
+      axios.post(`https://bitmoro.com/api/message/bulk-api`,data,{headers:option.headers}).then(response=>{
+        try{
+            let parsedResponse=response.data
+            resolve(parsedResponse)
+        }
+        catch(e){
+          reject(e)
+        }
+    }).catch(e=>{
+      reject(e)
+    })
+    });
+  }
+  sendDynamicMessage(options:BitmoroDynamicMessageApiDto): Promise<BitmoroMessageResponse > {
+    return new Promise<BitmoroMessageResponse>((resolve, reject) => {
+      const data = JSON.stringify(options);
+      const option = {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          'Content-Length': data.length,
+        },
+      };
+      axios.post(`https://bitmoro.com/api/message/dynamic-api`,data,{headers:option.headers}).then(response=>{
+        try{
+            let parsedResponse=response.data
+            resolve(parsedResponse)
+        }
+        catch(e){
+          reject(e)
+        }
+    }).catch(e=>{
+      reject(e)
+    })
+    });
+  }
+  sendOtpMessage(options:BitmoroOtpApiDto ): Promise<BitmoroOtpResponse > {
+    return new Promise<BitmoroOtpResponse>((resolve, reject) => {
+      const data = JSON.stringify(options);
+      const option = {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          'Content-Type': 'application/json',
+          'Content-Length': data.length,
+        },
+      };
       axios.post(`https://bitmoro.com/api/message/api`,data,{headers:option.headers}).then(response=>{
         try{
             let parsedResponse=response.data
@@ -71,15 +171,17 @@ export class MessageSender {
     this.sms = new MessageHandler(token);
   }
 
-  async sendSms(message: string, number: string[],senderId:string): Promise<boolean> {
-    const sendBody: MessageApiDto = {
+  async sendSms(message: string, number: string[],senderId?:string,scheduledDate?:number,callbackUrl?:string): Promise<BitmoroMessageResponse> {
+    const sendBody: BitmoroMessageApiDto = {
       message,
       number,
-      senderId
-    };
+      senderId,
+      scheduledDate,
+      callbackUrl
+    }
     try {
-      await this.sms.sendMessage(sendBody);
-      return true;
+      const response:BitmoroMessageResponse = await this.sms.sendMessage(sendBody);
+      return response
     } catch (e: any) {
       throw new MessageSenderError(e.message);
     }
@@ -93,26 +195,21 @@ export class MessageScheduler {
     this.sms = new MessageHandler(token);
   }
 
-  async scheduleSms(message: string, number: string[], timer: Date, senderId?: string): Promise<void> {
-    const sendBody: MessageApiDto = {
+  async scheduleSms(message: string, number: string[], senderId?: string,scheduledDate?:number,callbackUrl?:string):Promise<BitmoroMessageResponse>{
+    const sendBody: BitmoroMessageApiDto = {
       message,
       number,
       senderId,
-      timer,
+      scheduledDate,
+      callbackUrl
     };
-
-    const timeDifference = timer.getTime() - new Date().getTime();
-
-    if (timeDifference < 0) {
-      throw new Error("Scheduled time must be in the future.");
-    }
-
-    setTimeout(async () => {
       try {
-        await this.sms.sendMessage(sendBody);
+       const reponse:BitmoroMessageResponse = await this.sms.sendMessage(sendBody);
+       return reponse;
       } catch (e: any) {
+        throw new MessageSenderError(e.message);
       }
-    }, timeDifference);
+
   }
 }
 
@@ -137,16 +234,18 @@ export class OtpHandler{
    * @returns 
    */
   async sendOtpMessage(number:string,message:string,senderId?:string){
-      let sendBody:MessageApiDto={
+    console.log("sendOtpMessage")
+      let sendBody:BitmoroMessageApiDto={
           message,
           number:[number],
           senderId
       }
       try {
-          return await this.sms.sendMessage(sendBody)
+          const response:BitmoroOtpResponse= await this.sms.sendOtpMessage(sendBody)
+          return response
       }
       catch (e: any) {
-          throw new OtpSentError(e.message)
+          throw new OtpSentError(e)
       }
   }
 
@@ -224,11 +323,15 @@ export class Bitmoro{
     this.api=api
   }
 
-  sendMessage(otp:MessageApiDto){
-    this.sms.sendMessage(otp)
+  sendMessage(options:BitmoroMessageApiDto): Promise<BitmoroMessageResponse > {
+    return this.sms.sendMessage(options)
   }
 
   getOtpHandler(exp:number=40, otpLength:number=4){
     return new OtpHandler(this.api,exp,otpLength)
+  }
+
+  sendDynamicMessage(options:BitmoroDynamicMessageApiDto): Promise<BitmoroMessageResponse > {
+    return this.sms.sendDynamicMessage(options)
   }
 }

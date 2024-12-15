@@ -1,41 +1,34 @@
-// import {  OtpHandler } from './src/index';
+const smsBody ={
+    contacts :[{number:"9801234567",name:"Joe"},{number:"9812345678"}],
+    message:"Hello ${name}",
+    callbackUrl:"http://192.168.1.10:4000/test",
+    scheduledDate:Date.now()+1000*60,
+    defaultValues:{name:"joe"}
+}
+const smssBody ={
+    number :["9801234567","9812345678"],
+    message:"Hello",
+    callbackUrl:"http://192.168.1.10:4000/test",
+    scheduledDate:Date.now()+1000*60
+}
 
-// async function test() {
-// const otpService = new OtpHandler("6cacd67da1aced8ae67e9f2df61ebf7b019ae77fd27df0ed104402d053e7");
-// const otp = await  otpService.registerOtp("1" ,"1234")
-// const messageSent = await otpService.sendOtpMessage("9869363132",otp.otp)
-// if(messageSent)
-// {
-//     console.log("message sent")
-// }
-// const verified=otpService.verifyOtp("1",otp.otp)
-// if(verified)
-// {
-//     console.log("verified")
-// }
-// }
-// test()
+import {Bitmoro} from "./src/index"
+async function sendBulkSms(){
+    const bitmoro = new Bitmoro("cd7102ab9ef5fb1149b74db4879f679394cc9d3f9bbfbe66779df2ff11c8")
+    const response = await bitmoro.sendMessage(smssBody)
+    return response
+}
+async function sendDynamicMessage(){
+    const bitmoro = new Bitmoro("cd7102ab9ef5fb1149b74db4879f679394cc9d3f9bbfbe66779df2ff11c8")
+    const response = await bitmoro.sendDynamicMessage(smsBody)
+    return response
+}
+async function sendOtp()
+{
+    const bitmoro = new Bitmoro("cd7102ab9ef5fb1149b74db4879f679394cc9d3f9bbfbe66779df2ff11c8")
+    const OtpHandler = bitmoro.getOtpHandler()
+    const response = await OtpHandler.sendOtpMessage("9812345678","1234")
+    return response
+}
 
 
-// import { OtpHandler } from './src/index';
-
-// async function test() {
-//   const otpService = new OtpHandler("6cacd67da1aced8ae67e9f2df61ebf7b019ae77fd27df0ed104402d053e7");
-
-
-//   const messageSent = await otpService.sendOtpMessage("9869363132");
-//   if (messageSent) {
-//     console.log("message sent");
-//   }
-
-//   const verified = otpService.verifyOtp("9869363132", "1234");
-//   if (verified) {
-//     console.log("verified");
-//   } else {
-//     console.log("verification failed");
-//   }
-// }
-
-// test().catch(console.error);
-
-import exprees from 'express';
