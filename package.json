@@ -1,6 +1,6 @@
 {
   "name": "bitmoro",
-  "version": "1.0.22",
+  "version": "1.0.24",
   "description": "A library for sending messages and handling OTPs using the Bitmoro API.",
   "main": "build/index.js",
   "types": "build/index.d.ts",
@@ -20,11 +20,11 @@
   "author": "Backend Bitmoro",
   "license": "ISC",
   "devDependencies": {
+    "@types/axios": "^0.14.4",
     "@types/node": "^22.5.1",
     "nodemon": "^2.0.22",
     "ts-node": "^10.9.1",
     "ts-node-dev": "^2.0.0",
-    "@types/axios": "^0.14.4",
     "tsconfig-paths": "^4.1.0",
     "typescript": "^5.5.4"
   },

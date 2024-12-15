@@ -5,6 +5,9 @@
 
 This library provides a convenient interface for sending messages and handling OTP (One-Time Password) operations using the Bitmoro API from js or JavaScript.
 
+## To generate your API key, please refer to the blog linked below.
+https://bitmoro.com/blog/api-integration-for-bulk-sms-service-with-bitmoro/
+
 ## Installation
 
 To install the Bitmoro library, you can use npm. Open your terminal and run:
@@ -22,58 +25,127 @@ This section covers the basic usage of the library, demonstrating how to initial
 You need to import the necessary classes from the library in your project. Here’s how to do it:
 
 ```js
-import { OtpHandler, MessageScheduler, MessageSender } from 'bitmoro';
+import {Bitmoro} from 'bitmoro';
 ```
 
 ### Initializing Services
 
-You will need to initialize the `OtpHandler`, `MessageScheduler`, and `MessageSender` classes with your Bitmoro API token. Here’s an example:
+You will need to initialize the `Bitmoro` class with your Bitmoro API token. Here’s an example:
 
 ```js
-const otpService = new OtpHandler('YOUR_API_TOKEN', 50000, 5);
-const messageScheduler = new MessageScheduler('YOUR_API_TOKEN');
-const messageSender = new MessageSender('YOUR_API_TOKEN');
+let bitmoro = new Bitmoro("YOUR_API_TOKEN")
 ```
 
 ### Sending Messages
 
-To send an SMS immediately, you can use the `sendSms` method of the `MessageSender` class:
+To send SMS in bulk, you can use the `sendMessage` method of the `Bitmoro` class:
 
 ```js
-const success = await messageSender.sendSms('Hello, this is a test message!', ['9869363132'], 'SENDER_ID');
-if (success) {
-    console.log('SMS sent successfully');
-} else {
-    console.log('Failed to send SMS');
+const messageBody ={
+    number :["9801234567","9812345678"], // array of numbers in string
+    message:"Hello", // your message to send
+    callbackUrl:"http://192.168.1.10:4000/test", // callback url to get detailed response of message. Must be POST request.
+    scheduledDate:Date.now()+1000*60 // time to send message in UNIX timestamp in future
+    senderId:"joe_alert"  // senderId you want to send message from, but first should be registered in bitmoro.
+}
+
+async function sendBulkSms(body){
+    let bitmoro = new Bitmoro("cd7102ab9ef5fb1149b74db4879f679394cc9d3f9bbfbe66779df2ff11c8")
+    let response = await bitmoro.sendMessage(body)
+    return response
+}
+sendBulkSms(messageBody).then(()=>console.log).catch(()=>console.error)
+```
+
+#### **Return Type**
+
+- **`Promise<BitmoroMessageResponse>`**  
+  A `Promise` that resolves to an object with the following property:
+    ```js
+    interface BitmoroMessageResponse{
+        status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message is now ready to be sent.
+         report:[{   
+            number:string, // number to which message is sent
+            message:string, // message body
+            type:number, // type of message , 1 means ASCII message, 2 means Unicode message
+            credit:number // credit spent to send a message
+        }]
+        creditSpent:number,// total credit spent to send message
+        messageId:string, // unique id of message
+        senderId:string // senderId of message
+    }
+    ```
+
+### Sending Dynamic Messages
+To send dynamic personalized messages, you can use the `sendDynamicMessage` method of the `Bitmoro` class:
+```js
+
+const dynamicSmsBody ={
+    contacts :[{number:"9801234567",name:"Joe"},{number:"9812345678"}]//An array of contacts, where each contact contains a number and optional key-value pairs. These key-value pairs are used to dynamically replace placeholders (e.g., ${name}) in a message.
+    message:"Hello ${name}",// Message body with placeholders ${key} replaced by values from the contact or, if missing, by defaultValues.
+    callbackUrl:"http://192.168.1.10:4000/test", // callback url to get detailed response of message. Must be POST request.
+    scheduledDate:Date.now()+1000*60,// time to send message in UNIX timestamp in future
+    defaultValues:{name:"joe"} // default values for placeholders in the message field.
+}
+
+async function sendDynamicMessage(){
+    const bitmoro = new Bitmoro("YOUR_API_TOKEN")
+    const response = await bitmoro.sendDynamicMessage(dynamicSmsBody)
+    return response
 }
 ```
+#### **Return Type**
 
-### Scheduling Messages
-
-To schedule an SMS, you can use the `scheduleSms` method of the `MessageScheduler` class:
-
-```js
-const scheduleTime = new Date(Date.now() + 60000); // Schedule for 1 minute from now
-await messageScheduler.scheduleSms('This is a scheduled message', ['9869363132'], scheduleTime, 'SENDER_ID');
-console.log('SMS scheduled successfully');
-```
+- **`Promise<BitmoroMessageResponse>`**  
+  A `Promise` that resolves to an object with the following property:
+    ```js
+    interface BitmoroMessageResponse{
+        status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message is now ready to be sent.
+        report:[{   
+            number:string, // number to which message is sent
+            message:string, // message body
+            type:number, // type of message , 1 means ASCII message, 2 means Unicode message
+            credit:number// credit spent to send a message
+        }]
+        creditSpent:number,// total credit spent to send message
+        messageId:string, // unique id of message
+        senderId:string // senderId of message
+    }
+    ```
 
 ### Handling OTPs
 
-To handle OTPs, you can use the `OtpHandler` class to register and send OTPs, and verify them as follows:
+To handle OTPs, you can use the `Bitmoro` class to register and send OTPs, and verify them as follows:
 
 #### Registering an OTP
 
 ```js
-const otpId = 'user_1234'; // Your unique user identifier
-const otp = otpService.registerOtp(otpId);
+const bitmoro = new Bitmoro("YOUR_API_TOKEN")
+const OtpHandler = bitmoro.getOtpHandler(expiryTime, otpLength)
+const id = "user_1234"; // Your unique user identifier
+const otp = OtpHandler.registerOtp(id)
+console.log(otp);
+// Example Output:
+// {
+//   otp: '54892', // Generated OTP
+//   time: '2024-11-21T10:00:00.000Z' // Otp Generation timestamp
+// }
+
 ```
+Note : Error is emmited if the otp is already present in the given id waiting to get expired
+
 
 #### Sending an OTP
 
 ```js
-await otpService.sendOtpMessage(otp.otp, '9869363132');
-console.log('OTP sent successfully');
+const otpMessage = `Your OTP is ${otp.otp}`
+const response = await OtpHandler.sendOtpMessage('9812345678',otpMessage,"SENDER_ID");
+console.log(response);
+// Example Output:
+// {
+//    failed:1 // no of failed message
+//    messageId:akjhdkjsb23213kjdnsaUu // unique id of message
+// }
 ```
 
 #### Verifying an OTP
@@ -81,128 +153,43 @@ console.log('OTP sent successfully');
 To verify an OTP that a user provides:
 
 ```js
-const isValid = otpService.verifyOtp(otpId, userProvidedOtp);
+const isValid = otpHandler.verifyOtp(otpId, userProvidedOtp);
+console.log(isValid) // true if valid, false if not
 if (isValid) {
     console.log('OTP is valid');
 } else {
     console.log('OTP is invalid');
 }
 ```
-
-## API Reference
-
-### Classes Overview
-
-| Class Name         | Description                                                                                     |
-|--------------------|-------------------------------------------------------------------------------------------------|
-| `OtpHandler`       | Handles OTP registration, sending, and verification.                                           |
-| `MessageScheduler`  | Manages scheduling SMS messages to be sent at specific times.                                 |
-| `MessageSender`    | Provides methods for sending SMS messages immediately.                                         |
-
-### Class Details
-
-#### OtpHandler
-
-- **Constructor**: `new OtpHandler(token: string, expiry: number, attempts: number)`
-  - **Parameters**:
-    - `token`: Your Bitmoro API token.
-    - `expiry`: OTP expiry time in seconds.
-    - `attempts`: Maximum number of OTP attempts.
-
-- **Methods**:
-  - `registerOtp(id: string)`: Registers a new OTP for the given ID and returns the OTP object.
-  - `sendOtpMessage(otp: string, number: string)`: Sends the OTP to the specified number.
-  - `verifyOtp(id: string, otp: string)`: Verifies the OTP for the given ID.
-
-#### MessageScheduler
-
-- **Constructor**: `new MessageScheduler(token: string)`
-  - **Parameters**:
-    - `token`: Your Bitmoro API token.
-
-- **Methods**:
-  - `scheduleSms(message: string, numbers: string[], time: Date, senderId: string)`: Schedules an SMS to be sent at a specified time.
-
-#### MessageSender
-
-- **Constructor**: `new MessageSender(token: string)`
-  - **Parameters**:
-    - `token`: Your Bitmoro API token.
-
-- **Methods**:
-  - `sendSms(message: string, numbers: string[], senderId: string)`: Sends an SMS to the specified numbers immediately.
-
-## Features
-
-- **OTP Management**: Easily register, send, and verify OTPs.
-- **Message Scheduling**: Schedule messages to be sent at a specific time.
-- **Immediate SMS Sending**: Send SMS messages instantly.
-
-## Example Express Application
-
-Here’s an example of how you can use the library in an Express application:
-
-```js
-
-import express, { Request, Response } from 'express';
-import { OtpHandler, MessageScheduler } from './src/index'; // Ensure MessageScheduler is imported
-const app = express();
-app.use(express.json());
-
-// Initialize the OtpHandler
-const otpService = new OtpHandler('<test>', 50, 5);
-
-// Initialize the MessageScheduler
-const messageScheduler = new MessageScheduler('<test>');
+Note:You get an error if the id doesn't exists in otp store
 
 
+### Contents of the Request Body Sent to the Callback URL
+Ensure that you provide a valid URL that can handle a `POST` request. The request body will contain the following information:
+``` js
+interface BitmoroCallbackResponse{
+messageId:string, // unique id of message
+message:string,// message body
+status:MESSAGE_STATUS,// status of message
+report:{
+  number:string,// number to which message is sent
+  message?:string, // if error in message, error message
+  status:"failed"|"success"|"cancelled", // status of message
+  creditCount:number // credit spent to send message
+}
+senderId:string // senderId of message
+deliveredDate:Date // date when message is delivered
+refunded:number // no of credit refunded
+}
 
-// Register an OTP for a specific ID
-
-// Endpoint to send OTP
-app.get('/send-Otp', async (req: Request, res: Response) => {
-    try{
-        const otp = await otpService.registerOtp("1234");
-        console.log(otp)
-        await otpService.sendOtpMessage("9842882495",`${otp.otp}`);
-        res.send({ message: "Otp sent successfully", id: "1234" });
-    }
-    catch(e:any){
-        res.send({message:e.message})
-    }
-});
-
-// Endpoint to verify OTP
-app.get('/verify-Otp', (req: Request, res: Response) => {
-    const otp = req.query.otp as string;
-    const isValid = otpService.verifyOtp("1234", otp);
-    res.send({ isValid });
-});
-
-app.get("/bulk",(req:Request)=>{
-
-})
-
-// Endpoint to schedule an SMS
-app.post('/schedule-sms', async (req: Request, res: Response) => {
-    const { message, number, senderId, time } = req.body;
-
-    // Ensure the time is a valid Date object
-    const timer = new Date(time);
-    
-    try {
-        await messageScheduler.scheduleSms(message, [number], timer, senderId);
-        res.send({ message: "SMS scheduled successfully" });
-    } catch (error: any) {
-        res.status(400).send({ error: error.message });
-    }
-});
-
-// Start the server
-app.listen(59900, () => {
-    console.log(`Server is running on http://localhost:59900`);
-});
+enum MESSAGE_STATUS{
+  PENDING="pending", // message is pending to be sent
+  DELIVERED="sent", // message is delivered
+  FAILED="failed", // message is failed to be sent
+  CANCEL="cancel" // message is cancelled
+}
 ```
+
 
 ## License
 

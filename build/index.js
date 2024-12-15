@@ -1,19 +1,4 @@
 "use strict";
-var __extends = (this && this.__extends) || (function () {
-    var extendStatics = function (d, b) {
-        extendStatics = Object.setPrototypeOf ||
-            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
-            function (d, b) { for (var p in b) if (Object.prototype.hasOwnProperty.call(b, p)) d[p] = b[p]; };
-        return extendStatics(d, b);
-    };
-    return function (d, b) {
-        if (typeof b !== "function" && b !== null)
-            throw new TypeError("Class extends value " + String(b) + " is not a constructor or null");
-        extendStatics(d, b);
-        function __() { this.constructor = d; }
-        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-    };
-})();
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     var desc = Object.getOwnPropertyDescriptor(m, k);
@@ -46,167 +31,158 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (g && (g = 0, op[0] && (_ = 0)), _) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Bitmoro = exports.OtpHandler = exports.MessageScheduler = exports.MessageSender = void 0;
-var crypto = __importStar(require("crypto"));
-var timers_1 = require("timers");
-var axios_1 = __importDefault(require("axios"));
-var OtpSentError = /** @class */ (function (_super) {
-    __extends(OtpSentError, _super);
-    function OtpSentError(message) {
-        return _super.call(this, message) || this;
+exports.Bitmoro = exports.OtpHandler = exports.MessageScheduler = exports.MessageSender = exports.MESSAGE_STATUS = void 0;
+const crypto = __importStar(require("crypto"));
+const timers_1 = require("timers");
+const axios_1 = __importDefault(require("axios"));
+var MESSAGE_STATUS;
+(function (MESSAGE_STATUS) {
+    MESSAGE_STATUS["PENDING"] = "pending";
+    MESSAGE_STATUS["DELIVERED"] = "sent";
+    MESSAGE_STATUS["FAILED"] = "failed";
+    MESSAGE_STATUS["CANCEL"] = "cancel"; // message is cancelled
+})(MESSAGE_STATUS || (exports.MESSAGE_STATUS = MESSAGE_STATUS = {}));
+class OtpSentError extends Error {
+    constructor(message) {
+        super(message);
     }
-    return OtpSentError;
-}(Error));
-var MessageHandler = /** @class */ (function () {
-    function MessageHandler(token) {
+}
+class MessageHandler {
+    constructor(token) {
         this.token = token;
     }
-    MessageHandler.prototype.sendMessage = function (options) {
-        var _this = this;
-        return new Promise(function (resolve, reject) {
-            var data = JSON.stringify(options);
-            var option = {
+    sendMessage(options) {
+        return new Promise((resolve, reject) => {
+            const data = JSON.stringify(options);
+            const option = {
                 method: 'POST',
                 headers: {
-                    Authorization: "Bearer ".concat(_this.token),
+                    Authorization: `Bearer ${this.token}`,
                     'Content-Type': 'application/json',
                     'Content-Length': data.length,
                 },
             };
-            var response = '';
-            axios_1.default.post("https://bitmoro.com/api/message/api", data, { headers: option.headers }).then(function (response) {
+            axios_1.default.post(`http://192.168.1.11/message/bulk-api`, data, { headers: option.headers }).then(response => {
                 try {
-                    var parsedResponse = response.data;
+                    let parsedResponse = response.data;
                     resolve(parsedResponse);
                 }
                 catch (e) {
                     reject(e);
                 }
-            }).catch(function (e) {
+            }).catch(e => {
                 reject(e);
             });
         });
-    };
-    return MessageHandler;
-}());
-var MessageSenderError = /** @class */ (function (_super) {
-    __extends(MessageSenderError, _super);
-    function MessageSenderError(message) {
-        return _super.call(this, message) || this;
     }
-    return MessageSenderError;
-}(Error));
-var MessageSender = /** @class */ (function () {
-    function MessageSender(token) {
-        this.sms = new MessageHandler(token);
-    }
-    MessageSender.prototype.sendSms = function (message, number, senderId) {
-        return __awaiter(this, void 0, void 0, function () {
-            var sendBody, e_1;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        sendBody = {
-                            message: message,
-                            number: number,
-                            senderId: senderId
-                        };
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, this.sms.sendMessage(sendBody)];
-                    case 2:
-                        _a.sent();
-                        return [2 /*return*/, true];
-                    case 3:
-                        e_1 = _a.sent();
-                        throw new MessageSenderError(e_1.message);
-                    case 4: return [2 /*return*/];
+    sendDynamicMessage(options) {
+        return new Promise((resolve, reject) => {
+            const data = JSON.stringify(options);
+            const option = {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.token}`,
+                    'Content-Type': 'application/json',
+                    'Content-Length': data.length,
+                },
+            };
+            axios_1.default.post(`http://192.168.1.11/message/dynamic-api`, data, { headers: option.headers }).then(response => {
+                try {
+                    let parsedResponse = response.data;
+                    resolve(parsedResponse);
                 }
+                catch (e) {
+                    reject(e);
+                }
+            }).catch(e => {
+                reject(e);
             });
         });
-    };
-    return MessageSender;
-}());
+    }
+    sendOtpMessage(options) {
+        return new Promise((resolve, reject) => {
+            const data = JSON.stringify(options);
+            const option = {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.token}`,
+                    'Content-Type': 'application/json',
+                    'Content-Length': data.length,
+                },
+            };
+            axios_1.default.post(`http://192.168.1.11/message/api`, data, { headers: option.headers }).then(response => {
+                try {
+                    let parsedResponse = response.data;
+                    resolve(parsedResponse);
+                }
+                catch (e) {
+                    reject(e);
+                }
+            }).catch(e => {
+                reject(e);
+            });
+        });
+    }
+}
+class MessageSenderError extends Error {
+    constructor(message) {
+        super(message);
+    }
+}
+class MessageSender {
+    constructor(token) {
+        this.sms = new MessageHandler(token);
+    }
+    sendSms(message, number, senderId, scheduledDate, callbackUrl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sendBody = {
+                message,
+                number,
+                senderId,
+                scheduledDate,
+                callbackUrl
+            };
+            try {
+                const response = yield this.sms.sendMessage(sendBody);
+                return response;
+            }
+            catch (e) {
+                throw new MessageSenderError(e.message);
+            }
+        });
+    }
+}
 exports.MessageSender = MessageSender;
-var MessageScheduler = /** @class */ (function () {
-    function MessageScheduler(token) {
+class MessageScheduler {
+    constructor(token) {
         this.sms = new MessageHandler(token);
     }
-    MessageScheduler.prototype.scheduleSms = function (message, number, timer, senderId) {
-        return __awaiter(this, void 0, void 0, function () {
-            var sendBody, timeDifference;
-            var _this = this;
-            return __generator(this, function (_a) {
-                sendBody = {
-                    message: message,
-                    number: number,
-                    senderId: senderId,
-                    timer: timer,
-                };
-                timeDifference = timer.getTime() - new Date().getTime();
-                if (timeDifference < 0) {
-                    throw new Error("Scheduled time must be in the future.");
-                }
-                (0, timers_1.setTimeout)(function () { return __awaiter(_this, void 0, void 0, function () {
-                    var e_2;
-                    return __generator(this, function (_a) {
-                        switch (_a.label) {
-                            case 0:
-                                _a.trys.push([0, 2, , 3]);
-                                return [4 /*yield*/, this.sms.sendMessage(sendBody)];
-                            case 1:
-                                _a.sent();
-                                return [3 /*break*/, 3];
-                            case 2:
-                                e_2 = _a.sent();
-                                return [3 /*break*/, 3];
-                            case 3: return [2 /*return*/];
-                        }
-                    });
-                }); }, timeDifference);
-                return [2 /*return*/];
-            });
+    scheduleSms(message, number, senderId, scheduledDate, callbackUrl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const sendBody = {
+                message,
+                number,
+                senderId,
+                scheduledDate,
+                callbackUrl
+            };
+            try {
+                const reponse = yield this.sms.sendMessage(sendBody);
+                return reponse;
+            }
+            catch (e) {
+                throw new MessageSenderError(e.message);
+            }
         });
-    };
-    return MessageScheduler;
-}());
+    }
+}
 exports.MessageScheduler = MessageScheduler;
-var OtpHandler = /** @class */ (function () {
-    function OtpHandler(api, exp, otpLength) {
-        if (exp === void 0) { exp = 40; }
-        if (otpLength === void 0) { otpLength = 4; }
+class OtpHandler {
+    constructor(api, exp = 40, otpLength = 4) {
         OtpHandler.exp = exp;
         this.sms = new MessageHandler(api);
         this.otpLength = otpLength;
@@ -218,74 +194,64 @@ var OtpHandler = /** @class */ (function () {
      * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
      * @returns
      */
-    OtpHandler.prototype.sendOtpMessage = function (number, message, senderId) {
-        return __awaiter(this, void 0, void 0, function () {
-            var sendBody, e_3;
-            return __generator(this, function (_a) {
-                switch (_a.label) {
-                    case 0:
-                        sendBody = {
-                            message: message,
-                            number: [number],
-                            senderId: senderId
-                        };
-                        _a.label = 1;
-                    case 1:
-                        _a.trys.push([1, 3, , 4]);
-                        return [4 /*yield*/, this.sms.sendMessage(sendBody)];
-                    case 2: return [2 /*return*/, _a.sent()];
-                    case 3:
-                        e_3 = _a.sent();
-                        throw new OtpSentError(e_3.message);
-                    case 4: return [2 /*return*/];
-                }
-            });
+    sendOtpMessage(number, message, senderId) {
+        return __awaiter(this, void 0, void 0, function* () {
+            console.log("sendOtpMessage");
+            let sendBody = {
+                message,
+                number: [number],
+                senderId
+            };
+            try {
+                const response = yield this.sms.sendOtpMessage(sendBody);
+                return response;
+            }
+            catch (e) {
+                throw new OtpSentError(e);
+            }
         });
-    };
+    }
     /**
      *
      * @param id unique id for otp registration can be userId
      * @emits Error if the otp is already present in the given id waiting to get expired
      */
-    OtpHandler.prototype.registerOtp = function (id) {
-        return __awaiter(this, void 0, void 0, function () {
-            var otp, timeLeft;
-            return __generator(this, function (_a) {
-                otp = OtpHandler.validOtp.get(id);
-                if (otp) {
-                    timeLeft = new Date().getTime() - new Date(otp.time).getTime();
-                    throw new Error("You can only request otp after ".concat(OtpHandler.exp - Math.ceil(timeLeft / 1000), " second"));
-                }
-                otp = {
-                    otp: this.generateOtp(this.otpLength),
-                    time: new Date().toString()
-                };
-                OtpHandler.validOtp.set(id, otp);
-                OtpHandler.clearOtp(id);
-                return [2 /*return*/, otp];
-            });
+    registerOtp(id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            let otp = OtpHandler.validOtp.get(id);
+            if (otp) {
+                let timeLeft = new Date().getTime() - new Date(otp.time).getTime();
+                throw new Error(`You can only request otp after ${OtpHandler.exp - Math.ceil(timeLeft / 1000)} second`);
+            }
+            otp = {
+                otp: this.generateOtp(this.otpLength),
+                time: new Date().toString()
+            };
+            OtpHandler.validOtp.set(id, otp);
+            OtpHandler.clearOtp(id);
+            return otp;
         });
-    };
-    OtpHandler.clearOtp = function (id) {
-        (0, timers_1.setTimeout)(function () {
+    }
+    static clearOtp(id) {
+        (0, timers_1.setTimeout)(() => {
             if (OtpHandler.validOtp.has(id)) {
                 OtpHandler.validOtp.delete(id);
             }
         }, OtpHandler.exp * 1000);
-    };
+    }
     /**
      *
      * @param length length of otp you want
      * @returns
     
      */
-    OtpHandler.prototype.generateOtp = function (length) {
-        var otp = '';
-        for (var i = 0; i < length; i++) {
+    generateOtp(length) {
+        let otp = '';
+        for (let i = 0; i < length; i++) {
             otp += Math.floor(crypto.randomInt(0, 10)).toString();
         }
         return otp;
-    };
+    }
     /**
      *
      * @param id  unique id in which otp is registered
@@ -293,36 +259,35 @@ var OtpHandler = /** @class */ (function () {
      * @returns true if otp is valid
      * @emits Error if the id doesn't exists in otp store
      */
-    OtpHandler.prototype.verifyOtp = function (id, otp) {
+    verifyOtp(id, otp) {
         if (!OtpHandler.validOtp.has(id)) {
-            throw new Error("No id found for ".concat(id));
+            throw new Error(`No id found for ${id}`);
         }
-        var registeredOtp = OtpHandler.validOtp.get(id);
+        let registeredOtp = OtpHandler.validOtp.get(id);
         if ((registeredOtp === null || registeredOtp === void 0 ? void 0 : registeredOtp.otp) == otp) {
             OtpHandler.validOtp.delete(id);
             return true;
         }
         else
             return false;
-    };
-    OtpHandler.validOtp = new Map();
-    return OtpHandler;
-}());
+    }
+}
 exports.OtpHandler = OtpHandler;
-var Bitmoro = /** @class */ (function () {
-    function Bitmoro(api) {
+OtpHandler.validOtp = new Map();
+class Bitmoro {
+    constructor(api) {
         this.sms = new MessageHandler(api);
         this.api = api;
     }
-    Bitmoro.prototype.sendMessage = function (otp) {
-        this.sms.sendMessage(otp);
-    };
-    Bitmoro.prototype.getOtpHandler = function (exp, otpLength) {
-        if (exp === void 0) { exp = 40; }
-        if (otpLength === void 0) { otpLength = 4; }
+    sendMessage(options) {
+        return this.sms.sendMessage(options);
+    }
+    getOtpHandler(exp = 40, otpLength = 4) {
         return new OtpHandler(this.api, exp, otpLength);
-    };
-    return Bitmoro;
-}());
+    }
+    sendDynamicMessage(options) {
+        return this.sms.sendDynamicMessage(options);
+    }
+}
 exports.Bitmoro = Bitmoro;
 //# sourceMappingURL=index.js.map

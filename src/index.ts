@@ -234,8 +234,7 @@ export class OtpHandler{
    * @returns 
    */
   async sendOtpMessage(number:string,message:string,senderId?:string){
-    console.log("sendOtpMessage")
-      let sendBody:BitmoroMessageApiDto={
+      let sendBody:BitmoroOtpApiDto={
           message,
           number:[number],
           senderId
@@ -254,7 +253,7 @@ export class OtpHandler{
    * @param id unique id for otp registration can be userId
    * @emits Error if the otp is already present in the given id waiting to get expired
    */
-  async registerOtp(id:string): Promise<OtpBody>{
+  registerOtp(id:string):OtpBody{
       let otp=OtpHandler.validOtp.get(id)
       if(otp){
           let timeLeft=new Date().getTime() - new Date(otp.time).getTime()
