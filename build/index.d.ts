@@ -33,7 +33,7 @@ export interface BitmoroMessageResponse {
     status: "SCHEDULED" | "QUEUED";
     report: {
         number: string;
-        message?: string;
+        message: string;
         type: number;
         credit: number;
     };
@@ -92,7 +92,7 @@ export declare class OtpHandler {
      * @param id unique id for otp registration can be userId
      * @emits Error if the otp is already present in the given id waiting to get expired
      */
-    registerOtp(id: string): Promise<OtpBody>;
+    registerOtp(id: string): OtpBody;
     static clearOtp(id: string): void;
     /**
      *

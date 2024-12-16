@@ -66,7 +66,7 @@ class MessageHandler {
                     'Content-Length': data.length,
                 },
             };
-            axios_1.default.post(`http://192.168.1.11/message/bulk-api`, data, { headers: option.headers }).then(response => {
+            axios_1.default.post(`https://bitmoro.com/api/message/bulk-api`, data, { headers: option.headers }).then(response => {
                 try {
                     let parsedResponse = response.data;
                     resolve(parsedResponse);
@@ -90,7 +90,7 @@ class MessageHandler {
                     'Content-Length': data.length,
                 },
             };
-            axios_1.default.post(`http://192.168.1.11/message/dynamic-api`, data, { headers: option.headers }).then(response => {
+            axios_1.default.post(`https://bitmoro.com/api/message/dynamic-api`, data, { headers: option.headers }).then(response => {
                 try {
                     let parsedResponse = response.data;
                     resolve(parsedResponse);
@@ -114,7 +114,7 @@ class MessageHandler {
                     'Content-Length': data.length,
                 },
             };
-            axios_1.default.post(`http://192.168.1.11/message/api`, data, { headers: option.headers }).then(response => {
+            axios_1.default.post(`https://bitmoro.com/api/message/api`, data, { headers: option.headers }).then(response => {
                 try {
                     let parsedResponse = response.data;
                     resolve(parsedResponse);
@@ -196,7 +196,6 @@ class OtpHandler {
      */
     sendOtpMessage(number, message, senderId) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log("sendOtpMessage");
             let sendBody = {
                 message,
                 number: [number],
@@ -217,20 +216,18 @@ class OtpHandler {
      * @emits Error if the otp is already present in the given id waiting to get expired
      */
     registerOtp(id) {
-        return __awaiter(this, void 0, void 0, function* () {
-            let otp = OtpHandler.validOtp.get(id);
-            if (otp) {
-                let timeLeft = new Date().getTime() - new Date(otp.time).getTime();
-                throw new Error(`You can only request otp after ${OtpHandler.exp - Math.ceil(timeLeft / 1000)} second`);
-            }
-            otp = {
-                otp: this.generateOtp(this.otpLength),
-                time: new Date().toString()
-            };
-            OtpHandler.validOtp.set(id, otp);
-            OtpHandler.clearOtp(id);
-            return otp;
-        });
+        let otp = OtpHandler.validOtp.get(id);
+        if (otp) {
+            let timeLeft = new Date().getTime() - new Date(otp.time).getTime();
+            throw new Error(`You can only request otp after ${OtpHandler.exp - Math.ceil(timeLeft / 1000)} second`);
+        }
+        otp = {
+            otp: this.generateOtp(this.otpLength),
+            time: new Date().toString()
+        };
+        OtpHandler.validOtp.set(id, otp);
+        OtpHandler.clearOtp(id);
+        return otp;
     }
     static clearOtp(id) {
         (0, timers_1.setTimeout)(() => {

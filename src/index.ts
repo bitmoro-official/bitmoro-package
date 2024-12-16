@@ -36,7 +36,7 @@ export interface BitmoroMessageResponse{
 status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message placed inside queue to be sent
 report:{
   number:string, // number to which message is sent
-  message?:string, // message body
+  message:string, // message body
   type:number, // type of message , 1 means ASCII message, 2 means Unicode message
   credit:number, // credit spent to send a message
 }
