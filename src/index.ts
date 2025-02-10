@@ -2,8 +2,6 @@ import * as crypto from "crypto";
 import { setTimeout } from "timers";
 import axios from "axios"
 
-
-
 export interface BitmoroMessageApiDto{
   number:string[], // numbers to send message to
   message:string, // message to send
@@ -12,7 +10,7 @@ export interface BitmoroMessageApiDto{
   callbackUrl?:string; // callback url to get response of message. Must be POST request
 }
 export interface BitmoroOtpApiDto{
-  number:string[], // numbers to send message to
+  number:string, // numbers to send message to
   message:string, // message to send
   senderId?:string, // senderId you want to send message from, but first should be registered in bitmoro
 }
@@ -29,22 +27,27 @@ export enum MESSAGE_STATUS{
   PENDING="pending", // message is pending to be sent
   DELIVERED="sent", // message is delivered
   FAILED="failed", // message is failed to be sent
-  CANCEL="cancel" // message is cancelled
+  CANCEL="cancel", // message is cancelled
+  SPAM="spam", // message is marked as spam
+  QUEUE="queue" // message is inside the sending queue
 }
 
 export interface BitmoroMessageResponse{
 status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message placed inside queue to be sent
-report:{
-  number:string, // number to which message is sent
-  message:string, // message body
-  type:number, // type of message , 1 means ASCII message, 2 means Unicode message
-  credit:number, // credit spent to send a message
-}
+report:SingleMessage[]
 creditSpent:number,// total credit spent to send message
 messageId:string, // unique id of message
 senderId:string // senderId of message
 }
 
+export interface SingleMessage{
+  to:string, // number to which message is sent
+  messageId:string, // unique id of message
+  from:string, // senderId of message
+  text:string,// message body
+  type: number,// type of message
+  credit:number// credit spent to send message
+}
 
 export interface BitmoroCallbackResponse{
 messageId:string, // unique id of message
@@ -67,8 +70,9 @@ interface OtpBody {
 }
 
 interface BitmoroOtpResponse {
-  failed: number // no of failed messages
+  status:"DELIVERED"|"FAILED"
   messageId: string // unique id of message
+  statusUrl:string //The API endpoint to fetch message delivery status using your API token.
 }
 
 class OtpSentError extends Error {
@@ -95,7 +99,7 @@ class MessageHandler {
           'Content-Length': data.length,
         },
       };
-      axios.post(`https://bitmoro.com/api/message/bulk-api`,data,{headers:option.headers}).then(response=>{
+      axios.post(`https://api.bitmoro.com/message/api/bulk`,data,{headers:option.headers}).then(response=>{
         try{
             let parsedResponse=response.data
             resolve(parsedResponse)
@@ -119,7 +123,7 @@ class MessageHandler {
           'Content-Length': data.length,
         },
       };
-      axios.post(`https://bitmoro.com/api/message/dynamic-api`,data,{headers:option.headers}).then(response=>{
+      axios.post(`https://api.bitmoro.com/message/api/dynamic`,data,{headers:option.headers}).then(response=>{
         try{
             let parsedResponse=response.data
             resolve(parsedResponse)
@@ -143,7 +147,7 @@ class MessageHandler {
           'Content-Length': data.length,
         },
       };
-      axios.post(`https://bitmoro.com/api/message/api`,data,{headers:option.headers}).then(response=>{
+      axios.post(`https://api.bitmoro.com/message/api/single-message`,data,{headers:option.headers}).then(response=>{
         try{
             let parsedResponse=response.data
             resolve(parsedResponse)
@@ -233,10 +237,10 @@ export class OtpHandler{
    * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
    * @returns 
    */
-  async sendOtpMessage(number:string,message:string,senderId?:string){
+  async sendOtpMessage(number:string,message:string,senderId?:string):Promise<BitmoroOtpResponse>{
       let sendBody:BitmoroOtpApiDto={
           message,
-          number:[number],
+          number,
           senderId
       }
       try {
@@ -333,4 +337,10 @@ export class Bitmoro{
   sendDynamicMessage(options:BitmoroDynamicMessageApiDto): Promise<BitmoroMessageResponse > {
     return this.sms.sendDynamicMessage(options)
   }
+
+  sendHighPriorityMessage(options:BitmoroOtpApiDto):Promise<BitmoroOtpResponse>
+  {
+    return this.sms.sendOtpMessage(options)
+  }
+  
 }

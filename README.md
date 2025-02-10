@@ -42,7 +42,7 @@ To send SMS in bulk, you can use the `sendMessage` method of the `Bitmoro` class
 
 ```js
 const messageBody ={
-    number :["9801234567","9812345678"], // array of numbers in string
+    number :["98XXXXXXXX","98YYYYYYYY"], // array of numbers in string
     message:"Hello", // your message to send
     callbackUrl:"http://192.168.1.10:4000/test", // callback url to get detailed response of message. Must be POST request.
     scheduledDate:Date.now()+1000*60 // time to send message in UNIX timestamp in future
@@ -65,13 +65,15 @@ sendBulkSms(messageBody).then(()=>console.log).catch(()=>console.error)
     interface BitmoroMessageResponse{
         status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message is now ready to be sent.
          report:[{   
-            number:string, // number to which message is sent
-            message:string, // message body
+            to:string, // number to which message is sent
+            messageId:string, // unique id of message
+            text:string, // message body
+            from:string, //The sender ID of the message. If not provided, the default sender ID will be used.
             type:number, // type of message , 1 means ASCII message, 2 means Unicode message
             credit:number // credit spent to send a message
         }]
         creditSpent:number,// total credit spent to send message
-        messageId:string, // unique id of message
+        messageId:string, // A unique identifier for the message.
         senderId:string // senderId of message
     }
     ```
@@ -81,7 +83,7 @@ To send dynamic personalized messages, you can use the `sendDynamicMessage` meth
 ```js
 
 const dynamicSmsBody ={
-    contacts :[{number:"9801234567",name:"Joe"},{number:"9812345678"}]//An array of contacts, where each contact contains a number and optional key-value pairs. These key-value pairs are used to dynamically replace placeholders (e.g., ${name}) in a message.
+    contacts :[{number:"98YYYYYYYY",name:"Joe"},{number:"98XXXXXXXX"}]//An array of contacts, where each contact contains a number and optional key-value pairs. These key-value pairs are used to dynamically replace placeholders (e.g., ${name}) in a message.
     message:"Hello ${name}",// Message body with placeholders ${key} replaced by values from the contact or, if missing, by defaultValues.
     callbackUrl:"http://192.168.1.10:4000/test", // callback url to get detailed response of message. Must be POST request.
     scheduledDate:Date.now()+1000*60,// time to send message in UNIX timestamp in future
@@ -99,22 +101,58 @@ async function sendDynamicMessage(){
 - **`Promise<BitmoroMessageResponse>`**  
   A `Promise` that resolves to an object with the following property:
     ```js
-    interface BitmoroMessageResponse{
+     interface BitmoroMessageResponse{
         status: "SCHEDULED" | "QUEUED", // status of message. SCHEDULED if message is scheduled to be sent, QUEUED if message is now ready to be sent.
-        report:[{   
-            number:string, // number to which message is sent
-            message:string, // message body
+         report:[{   
+            to:string, // number to which message is sent
+            messageId:string, // unique id of message
+            text:string, // message body
+            from:string, //The sender ID of the message. If not provided, the default sender ID will be used.
             type:number, // type of message , 1 means ASCII message, 2 means Unicode message
-            credit:number// credit spent to send a message
+            credit:number // credit spent to send a message
         }]
         creditSpent:number,// total credit spent to send message
-        messageId:string, // unique id of message
+        messageId:string, // A unique identifier for the message.
         senderId:string // senderId of message
     }
     ```
+### SENDING HIGH PRIORITY SINGLE MESSAGE
+Single messages are given `high` priority in the queue and are dispatched instantly.
+To send a single message with high priority, you can use the `sendHighPriorityMessage` method of the `Bitmoro` class:
+#### Sending an OTP
+
+```js
+const messageBody ={
+    number :"98XXXXXXXX", // number in string
+    message:"Hello", // your message to send
+    senderId:"joe_alert"  // senderId you want to send message from, but first should be registered in bitmoro.
+}
+const response = await OtpHandler.sendHighPriorityMessage(messageBody);
+console.log(response);
+// Example Output:
+// {
+//    status:"DISPATCHED" // no of failed message
+//    messageId:akjhdkjsb23213kjdnsaUu // unique id of message
+//    statusUrl:"https://api.bitmoro.com/messages/akjhdkjsb23213kjdnsaUu" //The API endpoint to fetch message delivery status using your API token.
+// }
+```
+#### **Return Type**
+
+- **`Promise<BitmoroOtpResponse>`**  
+  A `Promise` that resolves to an object with the following property:
+    ```js
+    interface BitmoroOtpResponse {
+        status:"DISPATCHED"|"FAILED"
+        messageId: string // unique id of message
+        statusUrl:string //The API endpoint to fetch message delivery status using your API token.
+    }
+    ```
+
+
 
 ### Handling OTPs
 
+OTP'S are given `high` priority in the queue and are dispatched instantly.
 To handle OTPs, you can use the `Bitmoro` class to register and send OTPs, and verify them as follows:
 
 #### Registering an OTP
@@ -139,14 +177,27 @@ Note : Error is emmited if the otp is already present in the given id waiting to
 
 ```js
 const otpMessage = `Your OTP is ${otp.otp}`
-const response = await OtpHandler.sendOtpMessage('9812345678',otpMessage,"SENDER_ID");
+const response = await OtpHandler.sendOtpMessage('98XXXXXXXX',otpMessage,"SENDER_ID");
 console.log(response);
 // Example Output:
 // {
-//    failed:1 // no of failed message
+//    status:"DISPATCHED" // no of failed message
 //    messageId:akjhdkjsb23213kjdnsaUu // unique id of message
+//    statusUrl:"https://api.bitmoro.com/messages/akjhdkjsb23213kjdnsaUu" //The API endpoint to fetch message delivery status using your API token.
 // }
 ```
+#### **Return Type**
+
+- **`Promise<BitmoroOtpResponse>`**  
+  A `Promise` that resolves to an object with the following property:
+    ```js
+    interface BitmoroOtpResponse {
+        status:"DISPATCHED"|"FAILED"
+        messageId: string // unique id of message
+        statusUrl:string //The API endpoint to fetch message delivery status using your API token.
+    }
+    ```
+
 
 #### Verifying an OTP
 
@@ -182,11 +233,13 @@ deliveredDate:Date // date when message is delivered
 refunded:number // no of credit refunded
 }
 
-enum MESSAGE_STATUS{
+export enum MESSAGE_STATUS{
   PENDING="pending", // message is pending to be sent
   DELIVERED="sent", // message is delivered
   FAILED="failed", // message is failed to be sent
-  CANCEL="cancel" // message is cancelled
+  CANCEL="cancel", // message is cancelled
+  SPAM="spam", // message is marked as spam
+  QUEUE="queue" // message is inside the sending queue
 }
 ```
 
