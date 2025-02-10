@@ -44,7 +44,9 @@ var MESSAGE_STATUS;
     MESSAGE_STATUS["PENDING"] = "pending";
     MESSAGE_STATUS["DELIVERED"] = "sent";
     MESSAGE_STATUS["FAILED"] = "failed";
-    MESSAGE_STATUS["CANCEL"] = "cancel"; // message is cancelled
+    MESSAGE_STATUS["CANCEL"] = "cancel";
+    MESSAGE_STATUS["SPAM"] = "spam";
+    MESSAGE_STATUS["QUEUE"] = "queue"; // message is inside the sending queue
 })(MESSAGE_STATUS || (exports.MESSAGE_STATUS = MESSAGE_STATUS = {}));
 class OtpSentError extends Error {
     constructor(message) {
@@ -66,7 +68,7 @@ class MessageHandler {
                     'Content-Length': data.length,
                 },
             };
-            axios_1.default.post(`https://bitmoro.com/api/message/bulk-api`, data, { headers: option.headers }).then(response => {
+            axios_1.default.post(`https://api.bitmoro.com/message/api/bulk`, data, { headers: option.headers }).then(response => {
                 try {
                     let parsedResponse = response.data;
                     resolve(parsedResponse);
@@ -90,7 +92,7 @@ class MessageHandler {
                     'Content-Length': data.length,
                 },
             };
-            axios_1.default.post(`https://bitmoro.com/api/message/dynamic-api`, data, { headers: option.headers }).then(response => {
+            axios_1.default.post(`https://api.bitmoro.com/message/api/dynamic`, data, { headers: option.headers }).then(response => {
                 try {
                     let parsedResponse = response.data;
                     resolve(parsedResponse);
@@ -114,7 +116,7 @@ class MessageHandler {
                     'Content-Length': data.length,
                 },
             };
-            axios_1.default.post(`https://bitmoro.com/api/message/api`, data, { headers: option.headers }).then(response => {
+            axios_1.default.post(`https://api.bitmoro.com/message/api/single-message`, data, { headers: option.headers }).then(response => {
                 try {
                     let parsedResponse = response.data;
                     resolve(parsedResponse);
@@ -198,7 +200,7 @@ class OtpHandler {
         return __awaiter(this, void 0, void 0, function* () {
             let sendBody = {
                 message,
-                number: [number],
+                number,
                 senderId
             };
             try {
@@ -284,6 +286,9 @@ class Bitmoro {
     }
     sendDynamicMessage(options) {
         return this.sms.sendDynamicMessage(options);
+    }
+    sendHighPriorityMessage(options) {
+        return this.sms.sendOtpMessage(options);
     }
 }
 exports.Bitmoro = Bitmoro;

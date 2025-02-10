@@ -1,6 +1,6 @@
 {
   "name": "bitmoro",
-  "version": "1.0.25",
+  "version": "1.1.0",
   "description": "A library for sending messages and handling OTPs using the Bitmoro API.",
   "main": "build/index.js",
   "types": "build/index.d.ts",

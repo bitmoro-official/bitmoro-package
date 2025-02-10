@@ -6,7 +6,7 @@ export interface BitmoroMessageApiDto {
     callbackUrl?: string;
 }
 export interface BitmoroOtpApiDto {
-    number: string[];
+    number: string;
     message: string;
     senderId?: string;
 }
@@ -27,19 +27,24 @@ export declare enum MESSAGE_STATUS {
     PENDING = "pending",// message is pending to be sent
     DELIVERED = "sent",// message is delivered
     FAILED = "failed",// message is failed to be sent
-    CANCEL = "cancel"
+    CANCEL = "cancel",// message is cancelled
+    SPAM = "spam",// message is marked as spam
+    QUEUE = "queue"
 }
 export interface BitmoroMessageResponse {
     status: "SCHEDULED" | "QUEUED";
-    report: {
-        number: string;
-        message: string;
-        type: number;
-        credit: number;
-    };
+    report: SingleMessage[];
     creditSpent: number;
     messageId: string;
     senderId: string;
+}
+export interface SingleMessage {
+    to: string;
+    messageId: string;
+    from: string;
+    text: string;
+    type: number;
+    credit: number;
 }
 export interface BitmoroCallbackResponse {
     messageId: string;
@@ -60,8 +65,9 @@ interface OtpBody {
     otp: string;
 }
 interface BitmoroOtpResponse {
-    failed: number;
+    status: "DELIVERED" | "FAILED";
     messageId: string;
+    statusUrl: string;
 }
 export declare class MessageSender {
     private sms;
@@ -117,5 +123,6 @@ export declare class Bitmoro {
     sendMessage(options: BitmoroMessageApiDto): Promise<BitmoroMessageResponse>;
     getOtpHandler(exp?: number, otpLength?: number): OtpHandler;
     sendDynamicMessage(options: BitmoroDynamicMessageApiDto): Promise<BitmoroMessageResponse>;
+    sendHighPriorityMessage(options: BitmoroOtpApiDto): Promise<BitmoroOtpResponse>;
 }
 export {};
