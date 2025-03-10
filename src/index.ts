@@ -13,6 +13,7 @@ export interface BitmoroOtpApiDto{
   number:string, // numbers to send message to
   message:string, // message to send
   senderId?:string, // senderId you want to send message from, but first should be registered in bitmoro
+  callbackUrl?:string // callback url to get response of message. Must be POST request
 }
 export interface BitmoroDynamicMessageApiDto{
 contacts:{number:string,[key:string]:string | undefined}[], // array of contacts with number and other values. other values are replaced in message body having ${} in message body.
@@ -237,11 +238,12 @@ export class OtpHandler{
    * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
    * @returns 
    */
-  async sendOtpMessage(number:string,message:string,senderId?:string):Promise<BitmoroOtpResponse>{
+  async sendOtpMessage(number:string,message:string,senderId?:string,callbackUrl?:string):Promise<BitmoroOtpResponse>{
       let sendBody:BitmoroOtpApiDto={
           message,
           number,
-          senderId
+          senderId,
+          callbackUrl
       }
       try {
           const response:BitmoroOtpResponse= await this.sms.sendOtpMessage(sendBody)
