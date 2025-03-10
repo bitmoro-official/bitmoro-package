@@ -196,12 +196,13 @@ class OtpHandler {
      * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
      * @returns
      */
-    sendOtpMessage(number, message, senderId) {
+    sendOtpMessage(number, message, senderId, callbackUrl) {
         return __awaiter(this, void 0, void 0, function* () {
             let sendBody = {
                 message,
                 number,
-                senderId
+                senderId,
+                callbackUrl
             };
             try {
                 const response = yield this.sms.sendOtpMessage(sendBody);

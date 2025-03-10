@@ -9,6 +9,7 @@ export interface BitmoroOtpApiDto {
     number: string;
     message: string;
     senderId?: string;
+    callbackUrl?: string;
 }
 export interface BitmoroDynamicMessageApiDto {
     contacts: {
@@ -92,7 +93,7 @@ export declare class OtpHandler {
      * @param senderId senderId you want to sendOtp from, but first should be registered in bitmoro
      * @returns
      */
-    sendOtpMessage(number: string, message: string, senderId?: string): Promise<BitmoroOtpResponse>;
+    sendOtpMessage(number: string, message: string, senderId?: string, callbackUrl?: string): Promise<BitmoroOtpResponse>;
     /**
      *
      * @param id unique id for otp registration can be userId

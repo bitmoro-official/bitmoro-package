@@ -125,7 +125,8 @@ To send a single message with high priority, you can use the `sendHighPriorityMe
 const messageBody ={
     number :"98XXXXXXXX", // number in string
     message:"Hello", // your message to send
-    senderId:"joe_alert"  // senderId you want to send message from, but first should be registered in bitmoro.
+    senderId?:"joe_alert",  // senderId you want to send message from, but first should be registered in bitmoro.
+    callbackUrl?:string // callback url to get response of message. Must be POST request
 }
 const response = await OtpHandler.sendHighPriorityMessage(messageBody);
 console.log(response);
@@ -177,7 +178,7 @@ Note : Error is emmited if the otp is already present in the given id waiting to
 
 ```js
 const otpMessage = `Your OTP is ${otp.otp}`
-const response = await OtpHandler.sendOtpMessage('98XXXXXXXX',otpMessage,"SENDER_ID");
+const response = await OtpHandler.sendOtpMessage('98XXXXXXXX',otpMessage,"SENDER_ID","https://test.com/callback");
 console.log(response);
 // Example Output:
 // {
